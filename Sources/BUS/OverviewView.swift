@@ -113,12 +113,12 @@ struct OverviewView: View {
     private func summary(width: CGFloat) -> some View {
         if width >= 1040 {
             HStack(alignment: .top, spacing: DashboardTileLayout.spacing) {
-                scoreCard.frame(width: min(330, width * 0.30))
+                scoreCard.frame(width: min(280, width * 0.25))
                 metricGrid(columns: 2)
             }
         } else if width >= 700 {
             HStack(alignment: .top, spacing: DashboardTileLayout.spacing) {
-                scoreCard.frame(width: min(290, width * 0.38))
+                scoreCard.frame(width: min(260, width * 0.32))
                 metricGrid(columns: 2)
             }
         } else {
@@ -131,22 +131,24 @@ struct OverviewView: View {
 
     private var scoreCard: some View {
         GlassCard {
-            VStack(spacing: 9) {
+            VStack(spacing: 14) {
                 Text("BUS Score")
                     .font(.headline)
                     .foregroundStyle(.secondary)
+                    .padding(.top, 2)
 
                 ScoreRing(
                     score: frame.busScore,
                     label: monitor.scoreLabel(l),
-                    diameter: 168
+                    diameter: 154
                 )
 
                 Text(monitor.scoreExplanation(l))
                     .font(.caption)
                     .foregroundStyle(.secondary)
                     .multilineTextAlignment(.center)
-                    .lineLimit(3)
+                    .lineLimit(2)
+                    .padding(.bottom, 2)
             }
             .frame(
                 maxWidth: .infinity,
@@ -226,7 +228,7 @@ struct OverviewView: View {
                     RuntimeStatisticsCard(dashboardMode: true)
                     ScoreBreakdownCard(dashboardMode: true)
                     TopConsumersCard(limit: 3)
-                    PrivacyCard()
+                    PrivacyCard(dashboardMode: true)
                         .gridCellColumns(2)
                 }
             } else if width >= 760 {
@@ -240,7 +242,7 @@ struct OverviewView: View {
                     RuntimeStatisticsCard(dashboardMode: true)
                     ScoreBreakdownCard(dashboardMode: true)
                     TopConsumersCard(limit: 3)
-                    PrivacyCard()
+                    PrivacyCard(dashboardMode: true)
                         .gridCellColumns(2)
                 }
             } else {
@@ -248,7 +250,7 @@ struct OverviewView: View {
                     RuntimeStatisticsCard(dashboardMode: true)
                     ScoreBreakdownCard(dashboardMode: true)
                     TopConsumersCard(limit: 3)
-                    PrivacyCard()
+                    PrivacyCard(dashboardMode: true)
                 }
             }
         }
@@ -311,6 +313,8 @@ struct BatteryChartCard: View {
                     )
                     .clipped()
             }
+            .frame(height: compact ? DashboardTileLayout.compactChartCardHeight : DashboardTileLayout.regularChartCardHeight,
+                   alignment: .topLeading)
         }
         .frame(maxWidth: .infinity)
     }
@@ -454,9 +458,9 @@ struct PowerChartCard: View {
 
     var body: some View {
         PerformanceChartCard {
-            VStack(alignment: .leading, spacing: 10) {
+            VStack(alignment: .leading, spacing: 14) {
                 HStack(alignment: .firstTextBaseline) {
-                    VStack(alignment: .leading, spacing: 1) {
+                    VStack(alignment: .leading, spacing: 3) {
                         Text(l.t("powerBalance"))
                             .font(.headline)
                         Text(l.t("powerBalanceSubtitle"))
@@ -499,6 +503,8 @@ struct PowerChartCard: View {
                 }
                 .font(.caption)
             }
+            .frame(height: compact ? DashboardTileLayout.compactChartCardHeight : DashboardTileLayout.regularChartCardHeight,
+                   alignment: .topLeading)
         }
         .frame(maxWidth: .infinity)
     }
@@ -568,9 +574,7 @@ struct TopConsumersCard: View {
             }
             .frame(
                 maxWidth: .infinity,
-                minHeight: limit <= 3
-                    ? DashboardTileLayout.topConsumersContentHeight - 28
-                    : DashboardTileLayout.topConsumersContentHeight,
+                minHeight: DashboardTileLayout.topConsumersContentHeight,
                 alignment: .topLeading
             )
         }
@@ -580,10 +584,11 @@ struct TopConsumersCard: View {
 
 struct PrivacyCard: View {
     @EnvironmentObject private var l: Localizer
+    var dashboardMode: Bool = false
 
     var body: some View {
         GlassCard {
-            VStack(alignment: .leading, spacing: 12) {
+            VStack(alignment: .leading, spacing: dashboardMode ? 10 : 12) {
                 Label(
                     l.t("privacyTitle"),
                     systemImage: "lock.shield.fill"
@@ -592,8 +597,9 @@ struct PrivacyCard: View {
                 .foregroundStyle(.green)
 
                 Text(l.t("privacyText"))
-                    .font(.callout)
+                    .font(dashboardMode ? .callout : .callout)
                     .foregroundStyle(.secondary)
+                    .lineLimit(dashboardMode ? 3 : nil)
 
                 Divider()
 
@@ -605,7 +611,9 @@ struct PrivacyCard: View {
             }
             .frame(
                 maxWidth: .infinity,
-                minHeight: DashboardTileLayout.privacyContentHeight,
+                minHeight: dashboardMode
+                    ? DashboardTileLayout.topConsumersContentHeight
+                    : DashboardTileLayout.privacyContentHeight,
                 alignment: .topLeading
             )
         }

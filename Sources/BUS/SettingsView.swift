@@ -81,6 +81,8 @@ struct BUSSettingsView: View {
                     Text("\(Int(monitor.sampleInterval)) s").monospacedDigit().frame(width: 45)
                 }
                 Toggle(l.t("autoReset"), isOn: $monitor.resetAfterChargingEnds)
+                Toggle(l.t("autoResetAtFull"), isOn: $monitor.resetAfterFullCharge)
+                    .disabled(!monitor.resetAfterChargingEnds)
             }
 
             Section(l.t("deviceReference")) {

@@ -130,6 +130,11 @@ final class FlowParticleNSView: NSView {
         let splitX = startX + (endX - startX) * (compact ? 0.42 : 0.44)
         let batteryY = bounds.height * (compact ? 0.27 : 0.25)
         let systemY = bounds.height * (compact ? 0.73 : 0.75)
+        let trunkHeight: CGFloat = compact ? 17 : 32
+        let chargeShare = CGFloat(max(0.18, min(0.98, CGFloat(configuration.chargeShare) / 50)))
+        let dividerY = (centerY - trunkHeight / 2) + trunkHeight * chargeShare
+        let upperBranchStartY = (centerY - trunkHeight / 2) + trunkHeight * chargeShare * 0.5
+        let lowerBranchStartY = (dividerY + (centerY + trunkHeight / 2)) * 0.5
         let speed: CGFloat = compact ? 58 : 64
         let spacing: CGFloat = compact ? 88 : 100
         let dotSize: CGFloat = compact ? 3.0 : 4.0
@@ -158,12 +163,12 @@ final class FlowParticleNSView: NSView {
             let path = branchPath(
                 splitX: splitX,
                 endX: endX,
-                startY: centerY,
+                startY: upperBranchStartY,
                 endY: batteryY
             )
             addParticles(
                 path: path,
-                approximateLength: hypot(endX - splitX, batteryY - centerY) * 1.08,
+                approximateLength: hypot(endX - splitX, batteryY - upperBranchStartY) * 1.08,
                 speed: speed,
                 spacing: spacing,
                 share: CGFloat(configuration.chargeShare) / 50,
@@ -178,12 +183,12 @@ final class FlowParticleNSView: NSView {
             let path = branchPath(
                 splitX: splitX,
                 endX: endX,
-                startY: centerY,
+                startY: lowerBranchStartY,
                 endY: systemY
             )
             addParticles(
                 path: path,
-                approximateLength: hypot(endX - splitX, systemY - centerY) * 1.08,
+                approximateLength: hypot(endX - splitX, systemY - lowerBranchStartY) * 1.08,
                 speed: speed,
                 spacing: spacing,
                 share: CGFloat(configuration.systemShare) / 50,

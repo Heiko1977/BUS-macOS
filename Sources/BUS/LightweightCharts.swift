@@ -112,10 +112,10 @@ private final class RasterChartNSView: NSView {
         lastDrawnSize = bounds.size
 
         let plot = CGRect(
-            x: 43,
-            y: 8,
-            width: max(1, bounds.width - 51),
-            height: max(1, bounds.height - 32)
+            x: 52,
+            y: 12,
+            width: max(1, bounds.width - 68),
+            height: max(1, bounds.height - 48)
         )
         let background = NSBezierPath(
             roundedRect: plot,
@@ -158,7 +158,7 @@ private final class RasterChartNSView: NSView {
                 mode == .battery
                     ? String(format: "%.0f", value)
                     : String(format: "%.0f W", value),
-                at: CGPoint(x: plot.minX - 5, y: y),
+                at: CGPoint(x: plot.minX - 8, y: y),
                 alignment: .right
             )
         }
@@ -234,7 +234,7 @@ private final class RasterChartNSView: NSView {
                 Self.timeFormatter.string(from: date),
                 at: CGPoint(
                     x: plot.minX + plot.width * fraction,
-                    y: plot.maxY + 15
+                    y: plot.maxY + 22
                 ),
                 alignment: .center
             )
@@ -248,12 +248,15 @@ private final class RasterChartNSView: NSView {
     ) {
         let paragraph = NSMutableParagraphStyle()
         paragraph.alignment = alignment
+        paragraph.lineBreakMode = .byTruncatingTail
+        let font = NSFont.systemFont(ofSize: 10, weight: .medium)
+        let measuredWidth = max(48, ceil((string as NSString).size(withAttributes: [.font: font]).width) + 4)
         let attributes: [NSAttributedString.Key: Any] = [
-            .font: NSFont.systemFont(ofSize: 9),
+            .font: font,
             .foregroundColor: NSColor.secondaryLabelColor,
             .paragraphStyle: paragraph
         ]
-        let width: CGFloat = 58
+        let width: CGFloat = min(78, measuredWidth)
         let x: CGFloat
         switch alignment {
         case .right: x = point.x - width

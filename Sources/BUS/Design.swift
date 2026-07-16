@@ -3,15 +3,21 @@ import SwiftUI
 enum DashboardTileLayout {
     static let spacing: CGFloat = 14
     static let metricSpacing: CGFloat = 12
+    // Includes the 16pt GlassCard inset so the score tile aligns exactly
+    // with the two-row metric grid beside it.
     static let scoreContentHeight: CGFloat = 238
     static let metricContentHeight: CGFloat = 97
-    static let compactBatteryChartHeight: CGFloat = 232
-    static let compactPowerChartHeight: CGFloat = 205
-    static let regularBatteryChartHeight: CGFloat = 312
-    static let regularPowerChartHeight: CGFloat = 285
-    static let analysisContentHeight: CGFloat = 235
-    static let topConsumersContentHeight: CGFloat = 235
-    static let privacyContentHeight: CGFloat = 112
+    static let compactBatteryChartHeight: CGFloat = 220
+    static let compactPowerChartHeight: CGFloat = 220
+    static let regularBatteryChartHeight: CGFloat = 264
+    static let regularPowerChartHeight: CGFloat = 264
+    // The power chart has a legend below the plot; both chart cards use the
+    // same outer height so their borders always meet on one horizontal line.
+    static let compactChartCardHeight: CGFloat = 322
+    static let regularChartCardHeight: CGFloat = 374
+    static let analysisContentHeight: CGFloat = 220
+    static let topConsumersContentHeight: CGFloat = 190
+    static let privacyContentHeight: CGFloat = 190
 }
 
 /// A compositor-friendly Liquid Glass surface for scrolling content.

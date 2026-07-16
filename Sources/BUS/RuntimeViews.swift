@@ -57,9 +57,7 @@ struct ScoreBreakdownCard: View {
             }
             .frame(
                 maxWidth: .infinity,
-                minHeight: dashboardMode
-                    ? DashboardTileLayout.analysisContentHeight - 22
-                    : DashboardTileLayout.analysisContentHeight,
+                minHeight: DashboardTileLayout.analysisContentHeight,
                 alignment: .topLeading
             )
         }
@@ -156,9 +154,7 @@ struct RuntimeStatisticsCard: View {
             }
             .frame(
                 maxWidth: .infinity,
-                minHeight: dashboardMode
-                    ? DashboardTileLayout.analysisContentHeight - 22
-                    : DashboardTileLayout.analysisContentHeight,
+                minHeight: DashboardTileLayout.analysisContentHeight,
                 alignment: .topLeading
             )
         }

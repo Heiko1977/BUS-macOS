@@ -50,6 +50,15 @@ final class EnergyMonitor: ObservableObject {
         }
     }
 
+    @Published var resetAfterFullCharge: Bool {
+        didSet {
+            UserDefaults.standard.set(
+                resetAfterFullCharge,
+                forKey: "BUS.resetAfterFullCharge"
+            )
+        }
+    }
+
     @Published private(set) var manufacturerRuntimeOverrideHours: Double {
         didSet {
             UserDefaults.standard.set(
@@ -95,6 +104,9 @@ final class EnergyMonitor: ObservableObject {
         let autoReset = defaults.object(
             forKey: "BUS.resetAfterChargingEnds"
         ) as? Bool ?? false
+        let autoResetAtFull = defaults.object(
+            forKey: "BUS.resetAfterFullCharge"
+        ) as? Bool ?? false
         let override = defaults.object(
             forKey: "BUS.manufacturerRuntimeOverrideHours"
         ) as? Double ?? 0
@@ -125,6 +137,7 @@ final class EnergyMonitor: ObservableObject {
 
         sampleInterval = Self.clampedSampleInterval(interval)
         resetAfterChargingEnds = autoReset
+        resetAfterFullCharge = autoResetAtFull
         manufacturerRuntimeOverrideHours =
             Self.clampedManufacturerRuntimeOverride(override)
         selectedUsageProfile = selectedProfile
@@ -1084,9 +1097,19 @@ final class EnergyMonitor: ObservableObject {
         from old: BatterySnapshot?,
         to new: BatterySnapshot?
     ) -> Bool {
-        guard resetAfterChargingEnds, let old, let new else {
+        guard let old, let new else {
             return false
         }
+
+        if resetAfterFullCharge {
+            let reachedFullCharge = old.percent < 99.9 && new.percent >= 99.9
+            return new.externalConnected && reachedFullCharge
+        }
+
+        guard resetAfterChargingEnds else {
+            return false
+        }
+
         return old.externalConnected && !new.externalConnected
     }
 
