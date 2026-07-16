@@ -1,0 +1,17 @@
+BUS – Battery Usage Score 0.1
+
+Terminal öffnen und ausführen:
+
+bash "/Pfad/zu/BUS-v0.1-SwiftPackage/kompilieren-und-installieren.sh"
+
+Den Projektordner nicht doppelklicken.
+
+Mindestanforderung: macOS 27.0 und macOS-27-SDK.
+
+Aktuelle Version: BUS 0.3.0 (Build 11)
+
+Aktuelle Version: BUS 0.3.1 (Build 12)
+
+Aktuelle Version: BUS 0.3.4 (Build 15)
+
+Aktuelle Version: BUS 0.4.2 (Build 19)

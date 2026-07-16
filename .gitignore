@@ -1,0 +1,48 @@
+# macOS metadata
+.DS_Store
+._*
+.AppleDouble
+.LSOverride
+
+# Swift Package Manager and compiler output
+.build/
+.build-*/
+.swiftpm/
+build/
+DerivedData/
+*.dSYM/
+*.dSYM.zip
+
+# Xcode user-specific state
+xcuserdata/
+*.xcuserstate
+*.xcworkspace/xcuserdata/
+*.xcodeproj/xcuserdata/
+
+# Local Codex and working directories
+.codex/
+work/
+outputs/
+
+# Local caches, logs, temporary and backup files
+.cache/
+*.cache
+*.log
+*.tmp
+*.temp
+*.swp
+*.swo
+*~
+
+# Local configuration and credentials
+.env
+.env.*
+!.env.example
+*.local
+*.pem
+*.p12
+*.mobileprovision
+
+# Locally generated BUS data and packages
+hardware.json
+*.zip
