@@ -13,6 +13,54 @@ enum DeviceProfileDatabase {
         )
     }()
 
+    static var processorDescription: String {
+        if let brand = sysctlString("machdep.cpu.brand_string"), !brand.isEmpty {
+            return brand
+        }
+        return sysctlString("hw.optional.arm64") == "1" ? "Apple Silicon" : "Mac-Prozessor"
+    }
+
+    static var memoryDescription: String {
+        var bytes: UInt64 = 0
+        var size = MemoryLayout<UInt64>.size
+        guard sysctlbyname("hw.memsize", &bytes, &size, nil, 0) == 0 else { return "–" }
+        return String(format: "%.0f GB", Double(bytes) / 1_073_741_824)
+    }
+
+    static var coreDescription: String {
+        var cores: Int32 = 0
+        var size = MemoryLayout<Int32>.size
+        guard sysctlbyname("hw.ncpu", &cores, &size, nil, 0) == 0 else { return "–" }
+        return "\(cores) Kerne"
+    }
+
+    // Safe placeholder used until the background system_profiler query returns.
+    static let gpuDetails: (name: String, cores: String) = (
+        "Integrierte Apple GPU",
+        "Nicht verfügbar"
+    )
+
+    static func readGPUDetails() -> (name: String, cores: String) {
+        let process = Process()
+        let output = Pipe()
+        process.executableURL = URL(fileURLWithPath: "/usr/sbin/system_profiler")
+        process.arguments = ["SPDisplaysDataType", "-json"]
+        process.standardOutput = output
+        do {
+            try process.run()
+            process.waitUntilExit()
+            guard process.terminationStatus == 0,
+                  let object = try? JSONSerialization.jsonObject(
+                    with: output.fileHandleForReading.readDataToEndOfFile()
+                  ) else { return gpuDetails }
+            let name = firstValue(in: object, matching: ["sppci_model", "chipset-model", "spdisplays_device-name"]) ?? gpuDetails.name
+            let cores = firstValue(in: object, matching: ["sppci_cores", "spdisplays_gpun-core-count", "gpu-core-count"]) ?? gpuDetails.cores
+            return (name, cores == "–" ? cores : "\(cores) Kerne")
+        } catch {
+            return gpuDetails
+        }
+    }
+
     // Initial local reference set. Values use Apple's published maximum
     // wireless-web and video-playback specifications for these model families.
     private static let profiles: [String: DeviceProfile] = [
@@ -106,4 +154,22 @@ enum DeviceProfileDatabase {
         }
         return String(cString: buffer)
     }
+
+    private static func firstValue(in value: Any, matching keys: [String]) -> String? {
+        if let dictionary = value as? [String: Any] {
+            for key in keys {
+                if let result = dictionary[key] as? String, !result.isEmpty { return result }
+                if let result = dictionary[key] as? NSNumber { return result.stringValue }
+            }
+            for child in dictionary.values {
+                if let result = firstValue(in: child, matching: keys) { return result }
+            }
+        } else if let array = value as? [Any] {
+            for child in array {
+                if let result = firstValue(in: child, matching: keys) { return result }
+            }
+        }
+        return nil
+    }
+
 }

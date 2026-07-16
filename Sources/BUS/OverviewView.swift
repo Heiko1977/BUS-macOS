@@ -113,17 +113,20 @@ struct OverviewView: View {
     private func summary(width: CGFloat) -> some View {
         if width >= 1040 {
             HStack(alignment: .top, spacing: DashboardTileLayout.spacing) {
-                scoreCard.frame(width: min(280, width * 0.25))
+                scoreCard.frame(width: min(250, width * 0.24))
+                hardwareCard.frame(width: min(250, width * 0.24))
                 metricGrid(columns: 2)
             }
         } else if width >= 700 {
             HStack(alignment: .top, spacing: DashboardTileLayout.spacing) {
-                scoreCard.frame(width: min(260, width * 0.32))
+                scoreCard.frame(width: min(220, width * 0.27))
+                hardwareCard.frame(width: min(220, width * 0.27))
                 metricGrid(columns: 2)
             }
         } else {
             VStack(spacing: DashboardTileLayout.spacing) {
                 scoreCard
+                hardwareCard
                 metricGrid(columns: width >= 470 ? 2 : 1)
             }
         }
@@ -156,6 +159,45 @@ struct OverviewView: View {
             )
         }
         .allowsHitTesting(false)
+    }
+
+    private var hardwareCard: some View {
+        GlassCard {
+            VStack(alignment: .leading, spacing: 10) {
+                Label("MacBook Hardware", systemImage: "laptopcomputer")
+                    .font(.headline)
+                    .foregroundStyle(.green)
+
+                Text(monitor.deviceProfile.displayName)
+                    .font(.title3.bold())
+                    .lineLimit(2)
+                    .minimumScaleFactor(0.8)
+
+                Text(monitor.deviceProfile.modelIdentifier)
+                    .font(.caption)
+                    .foregroundStyle(.secondary)
+                    .monospaced()
+
+                Divider()
+
+                hardwareRow("Prozessor", DeviceProfileDatabase.processorDescription)
+                hardwareRow("GPU", monitor.gpuDetails.name)
+                hardwareRow("GPU-Kerne", monitor.gpuDetails.cores)
+                hardwareRow("Arbeitsspeicher", DeviceProfileDatabase.memoryDescription)
+                hardwareRow("Kerne", DeviceProfileDatabase.coreDescription)
+                hardwareRow("Akku-Referenz", monitor.deviceProfile.batteryWattHours.map { String(format: "%.1f Wh", $0) } ?? "–")
+            }
+            .frame(maxWidth: .infinity, minHeight: DashboardTileLayout.scoreContentHeight, alignment: .topLeading)
+        }
+        .allowsHitTesting(false)
+    }
+
+    private func hardwareRow(_ title: String, _ value: String) -> some View {
+        HStack(alignment: .firstTextBaseline) {
+            Text(title).font(.caption).foregroundStyle(.secondary)
+            Spacer(minLength: 8)
+            Text(value).font(.caption.bold()).multilineTextAlignment(.trailing).lineLimit(2)
+        }
     }
 
     private func metricGrid(columns count: Int) -> some View {

@@ -17,6 +17,7 @@ Die aktuelle Version als native macOS-App:
   <tr>
     <td><strong>Einstellungen</strong><br><img src="docs/screenshots/settings.png" width="300" alt="BUS Einstellungen"></td>
     <td><strong>Menüleisten-Popover</strong><br><img src="docs/screenshots/menu-bar-popover.png" width="220" alt="BUS Menüleisten-Popover"></td>
+    <td><strong>Hardware-Karte</strong><br><img src="docs/screenshots/overview-hardware.png" width="300" alt="BUS Übersicht mit MacBook-Hardwarekarte"></td>
   </tr>
 </table>
 

@@ -80,6 +80,7 @@ final class EnergyMonitor: ObservableObject {
         UsageProfileDetection
 
     let deviceProfile = DeviceProfileDatabase.current
+    @Published private(set) var gpuDetails = DeviceProfileDatabase.gpuDetails
 
     private let batteryReader = BatteryReader()
     private let samplingWorker = SamplingWorker()
@@ -152,6 +153,13 @@ final class EnergyMonitor: ObservableObject {
         _ = samplingWorker.sampleProcesses()
         runtimeStore.save(runtimeStatistics)
         restartTimer()
+
+        Task { [weak self] in
+            let details = await Task.detached(priority: .utility) {
+                DeviceProfileDatabase.readGPUDetails()
+            }.value
+            self?.gpuDetails = details
+        }
     }
 
     var sortedRecords: [AppEnergyRecord] {

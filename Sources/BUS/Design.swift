@@ -6,6 +6,8 @@ enum DashboardTileLayout {
     // Includes the 16pt GlassCard inset so the score tile aligns exactly
     // with the two-row metric grid beside it.
     static let scoreContentHeight: CGFloat = 238
+    // Two metric rows (including their 12pt gap and GlassCard insets) now
+    // exactly match the Score and Hardware cards beside them.
     static let metricContentHeight: CGFloat = 97
     static let compactBatteryChartHeight: CGFloat = 220
     static let compactPowerChartHeight: CGFloat = 220
