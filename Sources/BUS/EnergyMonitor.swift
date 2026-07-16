@@ -511,11 +511,24 @@ final class EnergyMonitor: ObservableObject {
             }
         }
 
-        let elapsedHours = Date().timeIntervalSince(session.startedAt) / 3600
+        // Compare against active sampling time only. A long gap between
+        // battery samples indicates display/system sleep and must not count
+        // as productive runtime against Apple's active-use references.
+        let elapsedHours = activeSamplingSeconds / 3600
         guard elapsedHours >= 0.05, batteryDropPercent >= 0.5 else {
             return nil
         }
         return elapsedHours * 100 / batteryDropPercent
+    }
+
+    private var activeSamplingSeconds: TimeInterval {
+        let ordered = session.history.sorted { $0.date < $1.date }
+        guard ordered.count > 1 else { return 0 }
+        let maximumGap = max(30, sampleInterval * 3)
+        return zip(ordered, ordered.dropFirst()).reduce(0) { total, pair in
+            let gap = pair.1.date.timeIntervalSince(pair.0.date)
+            return total + (gap > 0 && gap <= maximumGap ? gap : 0)
+        }
     }
 
     var currentRemainingRuntimeHours: Double? {
