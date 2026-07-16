@@ -1,8 +1,24 @@
-# BUS – Battery Usage Score 0.1
+# BUS – Battery Usage Score 0.9.6
 
 Eine native macOS-Menüleisten-App zur lokalen Analyse des geschätzten Batterieverbrauchs pro App.
 
 **BUS – Battery Usage Score von Heiko Große & ChatGPT © 2026**
+
+## App-Vorschau
+
+Die aktuelle Version als native macOS-App:
+
+<table>
+  <tr>
+    <td><strong>Übersicht</strong><br><img src="docs/screenshots/overview-dashboard.png" width="300" alt="BUS Übersicht"></td>
+    <td><strong>Laden</strong><br><img src="docs/screenshots/overview-charging.png" width="300" alt="BUS Ladeansicht"></td>
+    <td><strong>Profile</strong><br><img src="docs/screenshots/profiles.png" width="300" alt="BUS Profile"></td>
+  </tr>
+  <tr>
+    <td><strong>Einstellungen</strong><br><img src="docs/screenshots/settings.png" width="300" alt="BUS Einstellungen"></td>
+    <td><strong>Menüleisten-Popover</strong><br><img src="docs/screenshots/menu-bar-popover.png" width="220" alt="BUS Menüleisten-Popover"></td>
+  </tr>
+</table>
 
 ## Funktionen
 
