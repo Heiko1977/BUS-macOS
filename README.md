@@ -821,3 +821,28 @@ Rein informative Dashboard- und Historienbereiche nehmen nicht mehr am
 SwiftUI-Pointer-Hit-Test teil; Schaltflächen, Profilauswahl und Einstellungen
 bleiben vollständig interaktiv. Der Score-Ring startet keine impliziten
 Compositor-Animationen mehr.
+
+## BUS 0.9.2 – Gleichmäßigeres Dashboard-Raster
+
+Version 0.9.2, Build 47. Die Übersicht verwendet nun ein ruhigeres
+Kachelraster: Der BUS-Score steht neben einem 2x2-Block aus Kennzahlen, die
+Diagrammkarten haben dieselbe Außenhöhe, und Laufzeit-, Score- sowie
+Top-Verbraucher-Karten nutzen gemeinsame Zielmaße. Die Profilkarten füllen
+breite Ansichten gleichmäßiger aus, ohne die statische Liquid-Glass-Optik oder
+die stromsparende Diagrammaktualisierung zu verändern.
+
+## BUS 0.9.3 – Signaturfix für FinderInfo-Attribute
+
+Version 0.9.3, Build 48. Das Installationsskript entfernt Extended Attributes
+nun direkt im frisch erstellten App-Bundle und zusätzlich dateiweise, bevor
+`codesign` ausgeführt wird. Dadurch blockieren FinderInfo-, Resource-Fork- oder
+Quarantäne-Attribute die lokale Signierung nicht mehr.
+
+## BUS 0.9.4 – Robuste Signierung außerhalb des File Providers
+
+Version 0.9.4, Build 49. Das fertige App-Bundle wird vor der Signierung ohne
+Extended Attributes in ein lokales temporäres Verzeichnis kopiert. Dort werden
+FinderInfo- und Resource-Fork-Attribute erneut entfernt und ausdrücklich
+geprüft. Erst das erfolgreich signierte und verifizierte Bundle wird nach
+`/Applications` kopiert. So können Finder, iCloud oder andere File-Provider das
+Bundle während der Signierung nicht erneut mit unzulässigen Attributen versehen.

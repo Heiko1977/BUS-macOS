@@ -11,14 +11,34 @@ BUILD_DIR="$ROOT/build"
 APP="$BUILD_DIR/BUS.app"
 TARGET="/Applications/BUS.app"
 SIGN_IDENTITY="${SIGN_IDENTITY:--}"
+SIGNING_DIR=""
+
+scrub_extended_attributes() {
+  local path="$1"
+
+  xattr -cr "$path" 2>/dev/null || true
+  find "$path" -name '._*' -delete 2>/dev/null || true
+  find "$path" -exec xattr -c {} + 2>/dev/null || true
+  xattr -dr com.apple.FinderInfo "$path" 2>/dev/null || true
+  xattr -dr com.apple.ResourceFork "$path" 2>/dev/null || true
+  xattr -dr com.apple.quarantine "$path" 2>/dev/null || true
+}
+
+cleanup() {
+  if [[ -n "$SIGNING_DIR" && -d "$SIGNING_DIR" ]]; then
+    rm -rf "$SIGNING_DIR"
+  fi
+}
 
 on_error() {
   local code=$?
+  cleanup
   echo
   echo "❌ Vorgang abgebrochen (Fehlercode $code)."
   exit "$code"
 }
 trap on_error ERR
+trap cleanup EXIT
 
 echo
 echo "============================================================"
@@ -109,26 +129,39 @@ install -m 755 "$BIN_DIR/BUS" "$APP/Contents/MacOS/BUS"
 install -m 644 "$ROOT/Info.plist" "$APP/Contents/Info.plist"
 install -m 644 "$BUILD_DIR/AppIcon.icns" "$APP/Contents/Resources/AppIcon.icns"
 printf 'APPL????' > "$APP/Contents/PkgInfo"
-xattr -cr "$APP" 2>/dev/null || true
-find "$APP" -name '._*' -delete 2>/dev/null || true
+scrub_extended_attributes "$APP"
 plutil -lint "$APP/Contents/Info.plist" >/dev/null
 
 echo "▶ Signieren …"
-if [[ "$SIGN_IDENTITY" == "-" ]]; then
-  codesign --force --sign - --identifier "$BUNDLE_ID" "$APP"
-else
-  codesign --force --options runtime --timestamp --sign "$SIGN_IDENTITY" "$APP"
+# Sign outside Documents/iCloud/File Provider storage. Those services can add
+# com.apple.FinderInfo again between xattr cleanup and codesign.
+SIGNING_DIR="$(mktemp -d "${TMPDIR:-/tmp}/BUS-signing.XXXXXX")"
+SIGNED_APP="$SIGNING_DIR/BUS.app"
+ditto --noextattr --noqtn "$APP" "$SIGNED_APP"
+scrub_extended_attributes "$SIGNED_APP"
+
+if xattr -lr "$SIGNED_APP" 2>/dev/null | grep -Eq 'com\.apple\.(FinderInfo|ResourceFork)'; then
+  echo "❌ Unzulässige erweiterte Attribute konnten nicht entfernt werden:"
+  xattr -lr "$SIGNED_APP" 2>/dev/null | grep -E 'com\.apple\.(FinderInfo|ResourceFork)' || true
+  exit 1
 fi
-codesign --verify --strict --verbose=2 "$APP"
+
+if [[ "$SIGN_IDENTITY" == "-" ]]; then
+  codesign --force --sign - --identifier "$BUNDLE_ID" "$SIGNED_APP"
+else
+  codesign --force --options runtime --timestamp --sign "$SIGN_IDENTITY" "$SIGNED_APP"
+fi
+codesign --verify --strict --verbose=2 "$SIGNED_APP"
 
 echo "▶ Installieren …"
 osascript -e 'tell application "BUS" to quit' >/dev/null 2>&1 || true
 pkill -x BUS >/dev/null 2>&1 || true
 sudo rm -rf "$TARGET"
-sudo ditto --noextattr --noqtn "$APP" "$TARGET"
+sudo ditto --noextattr --noqtn "$SIGNED_APP" "$TARGET"
 sudo chown -R root:wheel "$TARGET"
 sudo xattr -cr "$TARGET" 2>/dev/null || true
 sudo find "$TARGET" -name '._*' -delete 2>/dev/null || true
+sudo find "$TARGET" -exec xattr -c {} + 2>/dev/null || true
 sudo xattr -dr com.apple.FinderInfo "$TARGET" 2>/dev/null || true
 sudo xattr -dr com.apple.ResourceFork "$TARGET" 2>/dev/null || true
 sudo xattr -dr com.apple.quarantine "$TARGET" 2>/dev/null || true

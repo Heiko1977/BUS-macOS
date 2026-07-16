@@ -184,6 +184,22 @@ require_text "$SOURCE_DIR/Design.swift" \
   'struct StaticLiquidGlassSurface: View' \
   'Die statische Liquid-Glass-Fläche fehlt.'
 
+require_text "$SOURCE_DIR/Design.swift" \
+  'enum DashboardTileLayout' \
+  'Die gemeinsamen Dashboard-Kachelmaße fehlen.'
+
+require_text "$SOURCE_DIR/OverviewView.swift" \
+  'metricGrid(columns: 2)' \
+  'Die breite Übersicht verwendet kein ruhiges 2x2-Kennzahlenraster.'
+
+require_text "$SOURCE_DIR/OverviewView.swift" \
+  'DashboardTileLayout.compactBatteryChartHeight' \
+  'Die einheitliche Diagrammkartenhöhe fehlt.'
+
+require_text "$SOURCE_DIR/RuntimeViews.swift" \
+  'DashboardTileLayout.analysisContentHeight' \
+  'Die einheitliche Höhe der Analyse-Karten fehlt.'
+
 if grep -Fq '.ultraThinMaterial' \
   "$SOURCE_DIR/Design.swift" \
   "$SOURCE_DIR/ChargingFlowView.swift"; then

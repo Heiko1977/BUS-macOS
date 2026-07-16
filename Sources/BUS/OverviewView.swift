@@ -17,7 +17,7 @@ struct OverviewView: View {
     var body: some View {
         GeometryReader { proxy in
             ScrollView {
-                VStack(alignment: .leading, spacing: 14) {
+                VStack(alignment: .leading, spacing: DashboardTileLayout.spacing) {
                     header(width: proxy.size.width - 40)
                     if frame.isChargingSession {
                         ChargingDashboardCard()
@@ -112,17 +112,17 @@ struct OverviewView: View {
     @ViewBuilder
     private func summary(width: CGFloat) -> some View {
         if width >= 1040 {
-            HStack(alignment: .top, spacing: 14) {
-                scoreCard.frame(width: min(310, width * 0.26))
-                metricGrid(columns: 4)
+            HStack(alignment: .top, spacing: DashboardTileLayout.spacing) {
+                scoreCard.frame(width: min(330, width * 0.30))
+                metricGrid(columns: 2)
             }
         } else if width >= 700 {
-            HStack(alignment: .top, spacing: 14) {
+            HStack(alignment: .top, spacing: DashboardTileLayout.spacing) {
                 scoreCard.frame(width: min(290, width * 0.38))
                 metricGrid(columns: 2)
             }
         } else {
-            VStack(spacing: 14) {
+            VStack(spacing: DashboardTileLayout.spacing) {
                 scoreCard
                 metricGrid(columns: width >= 470 ? 2 : 1)
             }
@@ -148,7 +148,10 @@ struct OverviewView: View {
                     .multilineTextAlignment(.center)
                     .lineLimit(3)
             }
-            .frame(maxWidth: .infinity, minHeight: 238)
+            .frame(
+                maxWidth: .infinity,
+                minHeight: DashboardTileLayout.scoreContentHeight
+            )
         }
         .allowsHitTesting(false)
     }
@@ -156,10 +159,10 @@ struct OverviewView: View {
     private func metricGrid(columns count: Int) -> some View {
         LazyVGrid(
             columns: Array(
-                repeating: GridItem(.flexible(), spacing: 12),
+                repeating: GridItem(.flexible(), spacing: DashboardTileLayout.metricSpacing),
                 count: count
             ),
-            spacing: 12
+            spacing: DashboardTileLayout.metricSpacing
         ) {
             MetricCard(
                 icon: "battery.75percent",
@@ -195,12 +198,12 @@ struct OverviewView: View {
     private func charts(width: CGFloat) -> some View {
         Group {
             if width >= 920 {
-                HStack(alignment: .top, spacing: 14) {
+                HStack(alignment: .top, spacing: DashboardTileLayout.spacing) {
                     BatteryChartCard(compact: true)
                     PowerChartCard(compact: true)
                 }
             } else {
-                VStack(spacing: 14) {
+                VStack(spacing: DashboardTileLayout.spacing) {
                     BatteryChartCard(compact: true)
                     PowerChartCard(compact: true)
                 }
@@ -213,30 +216,38 @@ struct OverviewView: View {
     private func details(width: CGFloat) -> some View {
         Group {
             if width >= 1120 {
-                HStack(alignment: .top, spacing: 14) {
-                    RuntimeStatisticsCard()
-                    ScoreBreakdownCard()
-                    TopConsumersCard()
+                LazyVGrid(
+                    columns: [
+                        GridItem(.flexible(), spacing: DashboardTileLayout.spacing),
+                        GridItem(.flexible(), spacing: DashboardTileLayout.spacing)
+                    ],
+                    spacing: DashboardTileLayout.spacing
+                ) {
+                    RuntimeStatisticsCard(dashboardMode: true)
+                    ScoreBreakdownCard(dashboardMode: true)
+                    TopConsumersCard(limit: 3)
+                    PrivacyCard()
+                        .gridCellColumns(2)
                 }
-                PrivacyCard()
             } else if width >= 760 {
                 LazyVGrid(
                     columns: [
                         GridItem(.flexible(), spacing: 14),
                         GridItem(.flexible(), spacing: 14)
                     ],
-                    spacing: 14
+                    spacing: DashboardTileLayout.spacing
                 ) {
-                    RuntimeStatisticsCard()
-                    ScoreBreakdownCard()
-                    TopConsumersCard()
+                    RuntimeStatisticsCard(dashboardMode: true)
+                    ScoreBreakdownCard(dashboardMode: true)
+                    TopConsumersCard(limit: 3)
                     PrivacyCard()
+                        .gridCellColumns(2)
                 }
             } else {
-                VStack(spacing: 14) {
-                    RuntimeStatisticsCard()
-                    ScoreBreakdownCard()
-                    TopConsumersCard()
+                VStack(spacing: DashboardTileLayout.spacing) {
+                    RuntimeStatisticsCard(dashboardMode: true)
+                    ScoreBreakdownCard(dashboardMode: true)
+                    TopConsumersCard(limit: 3)
                     PrivacyCard()
                 }
             }
@@ -293,7 +304,11 @@ struct BatteryChartCard: View {
                 }
 
                 chart
-                    .frame(height: compact ? 205 : 285)
+                    .frame(
+                        height: compact
+                            ? DashboardTileLayout.compactBatteryChartHeight
+                            : DashboardTileLayout.regularBatteryChartHeight
+                    )
                     .clipped()
             }
         }
@@ -469,7 +484,11 @@ struct PowerChartCard: View {
                 }
 
                 chart
-                    .frame(height: compact ? 205 : 285)
+                    .frame(
+                        height: compact
+                            ? DashboardTileLayout.compactPowerChartHeight
+                            : DashboardTileLayout.regularPowerChartHeight
+                    )
                     .clipped()
 
                 HStack(spacing: 18) {
@@ -508,6 +527,7 @@ struct TopConsumersCard: View {
     @EnvironmentObject private var l: Localizer
 
     private var monitor: EnergyMonitor { .shared }
+    var limit: Int = 5
 
     var body: some View {
         GlassCard {
@@ -519,7 +539,7 @@ struct TopConsumersCard: View {
                     Text(l.t("noData"))
                         .foregroundStyle(.secondary)
                 } else {
-                    ForEach(monitor.sortedRecords.prefix(5)) { item in
+                    ForEach(monitor.sortedRecords.prefix(limit)) { item in
                         HStack(spacing: 8) {
                             Image(nsImage: AppIconProvider.icon(for: item))
                                 .resizable()
@@ -546,7 +566,13 @@ struct TopConsumersCard: View {
                     }
                 }
             }
-            .frame(maxWidth: .infinity, minHeight: 185, alignment: .topLeading)
+            .frame(
+                maxWidth: .infinity,
+                minHeight: limit <= 3
+                    ? DashboardTileLayout.topConsumersContentHeight - 28
+                    : DashboardTileLayout.topConsumersContentHeight,
+                alignment: .topLeading
+            )
         }
         .allowsHitTesting(false)
     }
@@ -577,7 +603,11 @@ struct PrivacyCard: View {
                 )
                 .font(.subheadline.bold())
             }
-            .frame(maxWidth: .infinity, minHeight: 185, alignment: .topLeading)
+            .frame(
+                maxWidth: .infinity,
+                minHeight: DashboardTileLayout.privacyContentHeight,
+                alignment: .topLeading
+            )
         }
         .allowsHitTesting(false)
     }

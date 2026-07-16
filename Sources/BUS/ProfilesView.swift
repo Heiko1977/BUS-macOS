@@ -5,7 +5,7 @@ struct ProfilesView: View {
     @EnvironmentObject private var l: Localizer
 
     private let columns = [
-        GridItem(.adaptive(minimum: 210, maximum: 290), spacing: 14)
+        GridItem(.adaptive(minimum: 230), spacing: DashboardTileLayout.spacing)
     ]
 
     var body: some View {
@@ -21,7 +21,7 @@ struct ProfilesView: View {
 
                 currentProfileCard
 
-                LazyVGrid(columns: columns, spacing: 14) {
+                LazyVGrid(columns: columns, spacing: DashboardTileLayout.spacing) {
                     ForEach(UsageProfileKind.allCases) { profile in
                         profileCard(profile)
                     }

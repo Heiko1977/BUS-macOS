@@ -1,5 +1,19 @@
 import SwiftUI
 
+enum DashboardTileLayout {
+    static let spacing: CGFloat = 14
+    static let metricSpacing: CGFloat = 12
+    static let scoreContentHeight: CGFloat = 238
+    static let metricContentHeight: CGFloat = 97
+    static let compactBatteryChartHeight: CGFloat = 232
+    static let compactPowerChartHeight: CGFloat = 205
+    static let regularBatteryChartHeight: CGFloat = 312
+    static let regularPowerChartHeight: CGFloat = 285
+    static let analysisContentHeight: CGFloat = 235
+    static let topConsumersContentHeight: CGFloat = 235
+    static let privacyContentHeight: CGFloat = 112
+}
+
 /// A compositor-friendly Liquid Glass surface for scrolling content.
 ///
 /// SwiftUI's live `Material` backdrop has to sample and blur the window behind
@@ -149,7 +163,11 @@ struct MetricCard: View {
                         .foregroundStyle(.tertiary)
                 }
             }
-            .frame(maxWidth: .infinity, minHeight: 96, alignment: .topLeading)
+            .frame(
+                maxWidth: .infinity,
+                minHeight: DashboardTileLayout.metricContentHeight,
+                alignment: .topLeading
+            )
         }
         .allowsHitTesting(false)
     }

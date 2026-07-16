@@ -3,10 +3,11 @@ import SwiftUI
 struct ScoreBreakdownCard: View {
     @EnvironmentObject private var monitor: EnergyMonitor
     @EnvironmentObject private var l: Localizer
+    var dashboardMode: Bool = false
 
     var body: some View {
         GlassCard {
-            VStack(alignment: .leading, spacing: 12) {
+            VStack(alignment: .leading, spacing: dashboardMode ? 9 : 12) {
                 Label(l.t("scoreDetails"), systemImage: "gauge.with.dots.needle.67percent")
                     .font(.headline)
 
@@ -50,10 +51,17 @@ struct ScoreBreakdownCard: View {
                 }
 
                 Text(monitor.scoreExplanation(l))
-                    .font(.caption)
+                    .font(dashboardMode ? .caption2 : .caption)
                     .foregroundStyle(.secondary)
+                    .lineLimit(dashboardMode ? 2 : nil)
             }
-            .frame(maxWidth: .infinity, minHeight: 205, alignment: .topLeading)
+            .frame(
+                maxWidth: .infinity,
+                minHeight: dashboardMode
+                    ? DashboardTileLayout.analysisContentHeight - 22
+                    : DashboardTileLayout.analysisContentHeight,
+                alignment: .topLeading
+            )
         }
         .allowsHitTesting(false)
     }
@@ -99,12 +107,13 @@ struct ScoreBreakdownCard: View {
 struct RuntimeStatisticsCard: View {
     @EnvironmentObject private var monitor: EnergyMonitor
     @EnvironmentObject private var l: Localizer
+    var dashboardMode: Bool = false
 
     var body: some View {
         let summary = monitor.personalRuntimeSummary
 
         GlassCard {
-            VStack(alignment: .leading, spacing: 12) {
+            VStack(alignment: .leading, spacing: dashboardMode ? 9 : 12) {
                 Label(l.t("personalRuntime"), systemImage: "clock.arrow.2.circlepath")
                     .font(.headline)
 
@@ -141,10 +150,17 @@ struct RuntimeStatisticsCard: View {
                 }
 
                 Text(l.t("runtimeStatisticsInfo"))
-                    .font(.caption)
+                    .font(dashboardMode ? .caption2 : .caption)
                     .foregroundStyle(.secondary)
+                    .lineLimit(dashboardMode ? 2 : nil)
             }
-            .frame(maxWidth: .infinity, minHeight: 205, alignment: .topLeading)
+            .frame(
+                maxWidth: .infinity,
+                minHeight: dashboardMode
+                    ? DashboardTileLayout.analysisContentHeight - 22
+                    : DashboardTileLayout.analysisContentHeight,
+                alignment: .topLeading
+            )
         }
         .allowsHitTesting(false)
     }
