@@ -1,5 +1,4 @@
 import AppKit
-import Charts
 import SwiftUI
 
 struct OverviewView: View {
@@ -34,6 +33,7 @@ struct OverviewView: View {
                         .font(.caption2)
                         .foregroundStyle(.secondary)
                         .frame(maxWidth: .infinity)
+                        .allowsHitTesting(false)
                 }
                 .padding(20)
                 .frame(maxWidth: .infinity, alignment: .topLeading)
@@ -80,6 +80,7 @@ struct OverviewView: View {
                 .font(.subheadline)
                 .foregroundStyle(.secondary)
         }
+        .allowsHitTesting(false)
     }
 
     private var actionButtons: some View {
@@ -149,6 +150,7 @@ struct OverviewView: View {
             }
             .frame(maxWidth: .infinity, minHeight: 238)
         }
+        .allowsHitTesting(false)
     }
 
     private func metricGrid(columns count: Int) -> some View {
@@ -186,53 +188,60 @@ struct OverviewView: View {
             )
         }
         .frame(maxWidth: .infinity, alignment: .topLeading)
+        .allowsHitTesting(false)
     }
 
     @ViewBuilder
     private func charts(width: CGFloat) -> some View {
-        if width >= 920 {
-            HStack(alignment: .top, spacing: 14) {
-                BatteryChartCard(compact: true)
-                PowerChartCard(compact: true)
-            }
-        } else {
-            VStack(spacing: 14) {
-                BatteryChartCard(compact: true)
-                PowerChartCard(compact: true)
+        Group {
+            if width >= 920 {
+                HStack(alignment: .top, spacing: 14) {
+                    BatteryChartCard(compact: true)
+                    PowerChartCard(compact: true)
+                }
+            } else {
+                VStack(spacing: 14) {
+                    BatteryChartCard(compact: true)
+                    PowerChartCard(compact: true)
+                }
             }
         }
+        .allowsHitTesting(false)
     }
 
     @ViewBuilder
     private func details(width: CGFloat) -> some View {
-        if width >= 1120 {
-            HStack(alignment: .top, spacing: 14) {
-                RuntimeStatisticsCard()
-                ScoreBreakdownCard()
-                TopConsumersCard()
-            }
-            PrivacyCard()
-        } else if width >= 760 {
-            LazyVGrid(
-                columns: [
-                    GridItem(.flexible(), spacing: 14),
-                    GridItem(.flexible(), spacing: 14)
-                ],
-                spacing: 14
-            ) {
-                RuntimeStatisticsCard()
-                ScoreBreakdownCard()
-                TopConsumersCard()
+        Group {
+            if width >= 1120 {
+                HStack(alignment: .top, spacing: 14) {
+                    RuntimeStatisticsCard()
+                    ScoreBreakdownCard()
+                    TopConsumersCard()
+                }
                 PrivacyCard()
-            }
-        } else {
-            VStack(spacing: 14) {
-                RuntimeStatisticsCard()
-                ScoreBreakdownCard()
-                TopConsumersCard()
-                PrivacyCard()
+            } else if width >= 760 {
+                LazyVGrid(
+                    columns: [
+                        GridItem(.flexible(), spacing: 14),
+                        GridItem(.flexible(), spacing: 14)
+                    ],
+                    spacing: 14
+                ) {
+                    RuntimeStatisticsCard()
+                    ScoreBreakdownCard()
+                    TopConsumersCard()
+                    PrivacyCard()
+                }
+            } else {
+                VStack(spacing: 14) {
+                    RuntimeStatisticsCard()
+                    ScoreBreakdownCard()
+                    TopConsumersCard()
+                    PrivacyCard()
+                }
             }
         }
+        .allowsHitTesting(false)
     }
 
     private func duration(_ seconds: TimeInterval) -> String {
@@ -246,13 +255,18 @@ struct OverviewView: View {
 }
 
 struct BatteryChartCard: View {
-    @EnvironmentObject private var monitor: EnergyMonitor
+    @EnvironmentObject private var charts: DashboardChartStore
     @EnvironmentObject private var l: Localizer
+
+    private var monitor: EnergyMonitor { .shared }
 
     var compact = false
 
     private var points: [BatteryHistoryPoint] {
-        Array(monitor.session.history.suffix(compact ? 720 : 2_000))
+        chartSamples(
+            Array(charts.history.suffix(compact ? 720 : 2_000)),
+            limit: compact ? 160 : 240
+        )
     }
 
     private var lowerBound: Double {
@@ -260,7 +274,7 @@ struct BatteryChartCard: View {
     }
 
     var body: some View {
-        GlassCard {
+        PerformanceChartCard {
             VStack(alignment: .leading, spacing: 10) {
                 HStack(alignment: .firstTextBaseline) {
                     VStack(alignment: .leading, spacing: 1) {
@@ -291,53 +305,10 @@ struct BatteryChartCard: View {
         if points.count < 2 {
             emptyChart(symbol: "chart.xyaxis.line")
         } else {
-            Chart(points) { point in
-                AreaMark(
-                    x: .value("Time", point.date),
-                    y: .value("Battery", point.percent)
-                )
-                .foregroundStyle(
-                    LinearGradient(
-                        colors: [
-                            Color.green.opacity(0.30),
-                            Color.green.opacity(0.015)
-                        ],
-                        startPoint: .top,
-                        endPoint: .bottom
-                    )
-                )
-
-                LineMark(
-                    x: .value("Time", point.date),
-                    y: .value("Battery", point.percent)
-                )
-                .foregroundStyle(Color.green)
-                .lineStyle(
-                    StrokeStyle(
-                        lineWidth: 2.4,
-                        lineCap: .round,
-                        lineJoin: .round
-                    )
-                )
-            }
-            .chartYScale(domain: lowerBound...100)
-            .chartXAxis {
-                AxisMarks(values: .automatic(desiredCount: 5)) {
-                    AxisGridLine()
-                    AxisValueLabel(format: .dateTime.hour().minute())
-                }
-            }
-            .chartYAxis {
-                AxisMarks(position: .leading, values: .automatic(desiredCount: 4)) {
-                    AxisGridLine()
-                    AxisValueLabel()
-                }
-            }
-            .chartPlotStyle { plotArea in
-                plotArea
-                    .background(Color.black.opacity(0.035))
-                    .clipShape(RoundedRectangle(cornerRadius: 8))
-            }
+            LightweightBatteryChart(
+                points: points,
+                lowerBound: lowerBound
+            )
         }
     }
 
@@ -360,19 +331,41 @@ private struct PowerBalanceSample: Identifiable {
     let seriesID: String
 }
 
+/// Reduces chart complexity while retaining the first and latest reading.
+/// Hundreds of individual Swift Charts marks inside a scrolling material view
+/// are expensive to composite and add no visible detail at this card width.
+private func chartSamples(
+    _ points: [BatteryHistoryPoint],
+    limit: Int
+) -> [BatteryHistoryPoint] {
+    guard points.count > limit, limit > 2 else { return points }
+    let stride = max(1, Int(ceil(Double(points.count) / Double(limit))))
+    var result = Swift.stride(from: 0, to: points.count, by: stride)
+        .map { points[$0] }
+    if result.last?.id != points.last?.id, let last = points.last {
+        result.append(last)
+    }
+    return result
+}
+
 struct PowerChartCard: View {
-    @EnvironmentObject private var monitor: EnergyMonitor
+    @EnvironmentObject private var charts: DashboardChartStore
     @EnvironmentObject private var l: Localizer
+
+    private var monitor: EnergyMonitor { .shared }
 
     var compact = false
 
     private var points: [BatteryHistoryPoint] {
-        Array(
-            monitor.session.history
+        chartSamples(
+            Array(
+            charts.history
                 .filter {
                     $0.signedPowerWatts != nil || $0.powerWatts != nil
                 }
                 .suffix(compact ? 720 : 2_000)
+            ),
+            limit: compact ? 160 : 240
         )
     }
 
@@ -445,7 +438,7 @@ struct PowerChartCard: View {
     }
 
     var body: some View {
-        GlassCard {
+        PerformanceChartCard {
             VStack(alignment: .leading, spacing: 10) {
                 HStack(alignment: .firstTextBaseline) {
                     VStack(alignment: .leading, spacing: 1) {
@@ -503,91 +496,18 @@ struct PowerChartCard: View {
             }
             .frame(maxWidth: .infinity, maxHeight: .infinity)
         } else {
-            Chart {
-                RuleMark(y: .value("Neutral", 0))
-                    .foregroundStyle(Color.secondary.opacity(0.58))
-                    .lineStyle(StrokeStyle(lineWidth: 1))
-
-                ForEach(drawSamples) { sample in
-                    AreaMark(
-                        x: .value("Time", sample.date),
-                        yStart: .value("Neutral", 0),
-                        yEnd: .value("Draw", sample.watts),
-                        series: .value("Draw area run", sample.seriesID)
-                    )
-                    .foregroundStyle(Color.orange.opacity(0.18))
-
-                    LineMark(
-                        x: .value("Time", sample.date),
-                        y: .value("Draw", sample.watts),
-                        series: .value("Draw run", sample.seriesID)
-                    )
-                    .foregroundStyle(Color.orange)
-                    .lineStyle(
-                        StrokeStyle(
-                            lineWidth: 2.2,
-                            lineCap: .round,
-                            lineJoin: .round
-                        )
-                    )
-                }
-
-                ForEach(chargeSamples) { sample in
-                    AreaMark(
-                        x: .value("Time", sample.date),
-                        yStart: .value("Neutral", 0),
-                        yEnd: .value("Charge", sample.watts),
-                        series: .value("Charge area run", sample.seriesID)
-                    )
-                    .foregroundStyle(Color.green.opacity(0.20))
-
-                    LineMark(
-                        x: .value("Time", sample.date),
-                        y: .value("Charge", sample.watts),
-                        series: .value("Charge run", sample.seriesID)
-                    )
-                    .foregroundStyle(Color.green)
-                    .lineStyle(
-                        StrokeStyle(
-                            lineWidth: 2.2,
-                            lineCap: .round,
-                            lineJoin: .round
-                        )
-                    )
-                }
-            }
-            .chartYScale(domain: symmetricPowerDomain)
-            .chartXAxis {
-                AxisMarks(values: .automatic(desiredCount: 5)) {
-                    AxisGridLine()
-                    AxisValueLabel(format: .dateTime.hour().minute())
-                }
-            }
-            .chartYAxis {
-                AxisMarks(
-                    position: .leading,
-                    values: .automatic(desiredCount: 7)
-                ) { value in
-                    AxisGridLine(
-                        stroke: StrokeStyle(
-                            lineWidth: value.as(Double.self) == 0 ? 1.2 : 0.6
-                        )
-                    )
-                    AxisValueLabel()
-                }
-            }
-            .chartPlotStyle { plotArea in
-                plotArea
-                    .background(Color.black.opacity(0.035))
-                    .clipShape(RoundedRectangle(cornerRadius: 8))
-            }
+            LightweightPowerChart(
+                points: points,
+                domain: symmetricPowerDomain
+            )
         }
     }
 }
 
 struct TopConsumersCard: View {
-    @EnvironmentObject private var monitor: EnergyMonitor
     @EnvironmentObject private var l: Localizer
+
+    private var monitor: EnergyMonitor { .shared }
 
     var body: some View {
         GlassCard {
@@ -628,6 +548,7 @@ struct TopConsumersCard: View {
             }
             .frame(maxWidth: .infinity, minHeight: 185, alignment: .topLeading)
         }
+        .allowsHitTesting(false)
     }
 }
 
@@ -658,5 +579,6 @@ struct PrivacyCard: View {
             }
             .frame(maxWidth: .infinity, minHeight: 185, alignment: .topLeading)
         }
+        .allowsHitTesting(false)
     }
 }

@@ -716,3 +716,108 @@ Version 0.8.1, Build 36.
 - Vorabprüfung validiert Version, Buildnummer, Plist, Hintergrundmessung,
   Timerfreiheit, Renderer und Netzwerkfreiheit.
 - Compiler-Modulcaches werden lokal im Projekt angelegt.
+
+## BUS 0.8.2 – Dashboard- und Scroll-Optimierung
+
+Version 0.8.2, Build 37.
+
+- Dashboard-Unteransichten abonnieren nicht länger mehrfach den vollständigen
+  `EnergyMonitor`; die Übersicht besitzt nur noch einen UI-Invalidierungspfad.
+- Akku- und Leistungsdiagramme reduzieren lange Messreihen visuell verlustarm
+  auf maximal 160 beziehungsweise 240 Punkte.
+- Die Leistungsbilanz erzeugt dadurch deutlich weniger Chart-Marks.
+- Liquid-Glass-Karten behalten Material, Reflexionen und Konturen, verwenden
+  aber wesentlich günstigere Schatten mit weniger Compositing-Overdraw.
+- Die Vorabprüfung verhindert künftig direkte Monitor-Abonnements im
+  Dashboard und prüft das Chart-Downsampling.
+
+## BUS 0.8.3 – Leichtgewichtiger Diagrammrenderer
+
+Version 0.8.3, Build 38.
+
+- Swift Charts wurde vollständig aus den häufig sichtbaren Verlaufsansichten
+  und aus den Linker-Abhängigkeiten entfernt.
+- Akkuverlauf und Leistungsbilanz werden jeweils in einem einzigen
+  asynchronen Canvas gerendert.
+- Achsen, Raster, Zeitbeschriftungen, Flächen und Linien bleiben erhalten,
+  erzeugen aber keine umfangreichen SwiftUI-Mark-Hierarchien mehr.
+- Ladeenergie bleibt grün unterhalb der Nulllinie, Energieentnahme orange
+  oberhalb der Nulllinie; getrennte Messsegmente werden nicht verbunden.
+- Der Renderer ist statisch und verursacht beim Scrollen keine eigenen Timer,
+  Animationen oder Wakeups.
+- Die Vorabprüfung verhindert eine versehentliche erneute Einbindung von
+  Swift Charts.
+
+## BUS 0.8.4 – Scroll-Compositing-Optimierung
+
+Version 0.8.4, Build 39.
+
+- Diagrammkarten verwenden eine statische Oberfläche ohne Live-Material,
+  Reflexionslayer und große Schatten.
+- Die Liquid-Glass-Oberfläche aller übrigen Karten bleibt unverändert.
+- Beim Scrollen müssen dadurch keine backdrop-blur-Flächen für die Diagramme
+  neu zusammengesetzt werden.
+
+## BUS 0.8.6 – Rasterisierte Diagramm-Snapshots
+
+Version 0.8.6, Build 41.
+
+- Jede Diagrammkarte wird nach einer Datenänderung einmal als GPU-Textur
+  rasterisiert.
+- Während des Scrollens werden nur noch fertige Texturen verschoben.
+- Der Rastercache wird durch den fünfsekündigen Diagramm-Snapshot invalidiert,
+  nicht durch einzelne Scrollframes.
+
+## BUS 0.8.7 – Profiling-basierter Main-Thread-Fix
+
+Version 0.8.7, Build 42.
+
+## BUS 0.8.8 – Scroll-Responder- und Compositing-Fix
+
+Version 0.8.8, Build 43. Ein echter Laufzeit-Mitschnitt zeigte, dass die
+Canvas-Diagramme selbst kaum Rechenzeit benötigten. Der Engpass lag in der
+SwiftUI-/AppKit-Hit-Test-Hierarchie und in der zusätzlichen Offscreen-
+Rasterisierung der Diagrammkarten. Nicht interaktive Diagramme und der
+Ladefluss sind deshalb aus dem Pointer-Responder-Baum entfernt; die unnötige
+`drawingGroup`-Metal-Zwischenfläche der Diagrammkarten entfällt.
+
+## BUS 0.8.9 – Native statische Diagrammoberflächen
+
+Version 0.8.9, Build 44. Die Diagramme verwenden weder Swift Charts noch
+SwiftUI Canvas. Ein layer-gestütztes `NSView` zeichnet jede Kurve nur bei
+neuen Daten oder einer echten Größenänderung. Beim Scrollen verschiebt AppKit
+die bereits fertige Backing Surface; die Diagramme nehmen weder an SwiftUI-
+Invalidierungen noch am Pointer-Hit-Test teil. Der fünfsekündige Datenzyklus
+bleibt unverändert.
+
+## BUS 0.9.0 – Atomare, entkoppelte UI-Pipeline
+
+Version 0.9.0, Build 45. Ein Messzyklus verändert das veröffentlichte
+Sitzungsmodell nicht mehr einzeln pro Prozess, sondern sendet genau eine
+atomare UI-Invalidierung. `RootView`, Navigation und App-Szene beobachten den
+EnergyMonitor nicht mehr. Live-Dashboard und Diagrammverlauf besitzen getrennte
+ObservableObject-Domänen, sodass ein neuer Diagramm-Snapshot nur die beiden
+Diagrammkarten aktualisiert. Profilerkennung und JSON-Persistenz laufen auf
+Utility-Queues außerhalb des Main Threads. Die native Animationsfrequenz bleibt
+unbegrenzt; die Partikel bewegen sich als `CAKeyframeAnimation` direkt im
+Core-Animation-Compositor und erzeugen keine SwiftUI-Invalidierung pro Frame.
+Diagramme erhalten weiterhin höchstens alle fünf Sekunden neue Daten.
+
+- Ein macOS-Prozess-Sample identifizierte die automatische Profilerkennung in
+  `ActiveProfileCard` als dominanten Main-Thread-Hotspot.
+- Die Erkennung wird nur noch einmal pro Messzyklus berechnet und gespeichert.
+- Dashboard und Profilkarte lesen ausschließlich einen fertigen
+  Präsentations-Snapshot.
+- Wiederholte App-/Prozesssortierungen und String-Suchen während SwiftUI-
+  Layout- und Scrollupdates entfallen.
+
+## BUS 0.9.1 – Statisches Liquid Glass und schlanker Scroll-Responder
+
+Version 0.9.1, Build 46. Die großen Dashboard- und Ladekarten verwenden keine
+Live-Backdrop-Materialien mehr. Eine farbschemaabhängige, mehrlagige
+Liquid-Glass-Fläche erhält Tiefe, Lichtreflexe und Akzentfarben, ohne dass der
+WindowServer beim Scrollen jede Karte erneut abtasten und weichzeichnen muss.
+Rein informative Dashboard- und Historienbereiche nehmen nicht mehr am
+SwiftUI-Pointer-Hit-Test teil; Schaltflächen, Profilauswahl und Einstellungen
+bleiben vollständig interaktiv. Der Score-Ring startet keine impliziten
+Compositor-Animationen mehr.

@@ -155,18 +155,20 @@ struct ProfilesView: View {
 }
 
 struct ActiveProfileCard: View {
-    @EnvironmentObject private var monitor: EnergyMonitor
+    @EnvironmentObject private var presentation: DashboardPresentationStore
     @EnvironmentObject private var l: Localizer
+
+    private var frame: DashboardPresentationFrame { presentation.frame }
 
     var body: some View {
         GlassCard {
             HStack(spacing: 14) {
-                Image(systemName: monitor.activeUsageProfile.icon)
+                Image(systemName: frame.activeUsageProfile.icon)
                     .font(.title2)
-                    .foregroundStyle(monitor.activeUsageProfile.accent)
+                    .foregroundStyle(frame.activeUsageProfile.accent)
                     .frame(width: 44, height: 44)
                     .background(
-                        monitor.activeUsageProfile.accent.opacity(0.12),
+                        frame.activeUsageProfile.accent.opacity(0.12),
                         in: RoundedRectangle(cornerRadius: 12)
                     )
 
@@ -174,10 +176,10 @@ struct ActiveProfileCard: View {
                     Text(l.t("activeProfile"))
                         .font(.caption)
                         .foregroundStyle(.secondary)
-                    Text(l.t(monitor.activeUsageProfile.titleKey))
+                    Text(l.t(frame.activeUsageProfile.titleKey))
                         .font(.headline)
                     Text(
-                        monitor.selectedUsageProfile == .automatic
+                        frame.selectedUsageProfile == .automatic
                             ? l.t("automaticallyDetected")
                             : l.t("manuallySelected")
                     )
@@ -191,10 +193,10 @@ struct ActiveProfileCard: View {
                     Text(l.t("expectedRuntime"))
                         .font(.caption)
                         .foregroundStyle(.secondary)
-                    Text(formatHours(monitor.usageProfileReferenceHours))
+                    Text(formatHours(frame.usageProfileReferenceHours))
                         .font(.headline)
                         .monospacedDigit()
-                    if let efficiency = monitor.usageProfileEfficiencyPercent {
+                    if let efficiency = frame.usageProfileEfficiencyPercent {
                         Text(String(format: "%.0f %%", efficiency))
                             .font(.caption.bold())
                             .foregroundStyle(efficiency >= 85 ? .green : .orange)

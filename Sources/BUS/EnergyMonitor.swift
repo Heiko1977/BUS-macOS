@@ -23,10 +23,13 @@ private final class SamplingWorker: @unchecked Sendable {
 final class EnergyMonitor: ObservableObject {
     static let shared = EnergyMonitor()
 
-    @Published private(set) var session: MonitorSession
-    @Published private(set) var battery: BatterySnapshot?
+    // These high-frequency values are published manually as one atomic batch
+    // per completed sample. Direct @Published value-type mutations used to
+    // invalidate SwiftUI once for every updated process record.
+    private(set) var session: MonitorSession
+    private(set) var battery: BatterySnapshot?
     @Published private(set) var isRunning = true
-    @Published private(set) var runtimeStatistics: RuntimeStatistics
+    private(set) var runtimeStatistics: RuntimeStatistics
 
     @Published private(set) var sampleInterval: Double {
         didSet {
@@ -64,6 +67,8 @@ final class EnergyMonitor: ObservableObject {
             )
         }
     }
+    private(set) var detectedUsageProfileSnapshot:
+        UsageProfileDetection
 
     let deviceProfile = DeviceProfileDatabase.current
 
@@ -73,6 +78,10 @@ final class EnergyMonitor: ObservableObject {
     private let runtimeStore = RuntimeStatisticsStore()
     private let samplingQueue = DispatchQueue(
         label: "de.heikogrosse.bus.sampling",
+        qos: .utility
+    )
+    private let persistenceQueue = DispatchQueue(
+        label: "de.heikogrosse.bus.persistence",
         qos: .utility
     )
     private var timer: Timer?
@@ -119,6 +128,9 @@ final class EnergyMonitor: ObservableObject {
         manufacturerRuntimeOverrideHours =
             Self.clampedManufacturerRuntimeOverride(override)
         selectedUsageProfile = selectedProfile
+        detectedUsageProfileSnapshot = UsageProfileDetector.detect(
+            from: Array(initialSession.records.values)
+        )
         battery = initialBattery
         session = initialSession
         runtimeStatistics = loadedRuntime
@@ -395,11 +407,11 @@ final class EnergyMonitor: ObservableObject {
     }
 
     var detectedUsageProfile: UsageProfileKind {
-        UsageProfileDetector.detect(from: sortedRecords).kind
+        detectedUsageProfileSnapshot.kind
     }
 
     var detectedUsageProfileConfidence: Double {
-        UsageProfileDetector.detect(from: sortedRecords).confidence
+        detectedUsageProfileSnapshot.confidence
     }
 
     var activeUsageProfile: UsageProfileKind {
@@ -705,10 +717,12 @@ final class EnergyMonitor: ObservableObject {
     }
 
     func resetSession() {
+        objectWillChange.send()
         startFreshSession(with: batteryReader.read())
     }
 
     func deleteAllLocalData() {
+        objectWillChange.send()
         store.deleteAll()
         runtimeStore.delete()
         runtimeStatistics = .empty
@@ -816,15 +830,23 @@ final class EnergyMonitor: ObservableObject {
         guard isRunning, !collectionIsInFlight else { return }
         collectionIsInFlight = true
         let worker = samplingWorker
+        // Copy the previous profile input once. String matching and process
+        // name aggregation then happen on the sampling queue, never while the
+        // main thread is handling trackpad events.
+        let profileRecords = Array(session.records.values)
 
         samplingQueue.async { [weak self, worker] in
             let newBattery = worker.readBattery()
             let deltas = worker.sampleProcesses()
+            let profileDetection = UsageProfileDetector.detect(
+                from: profileRecords
+            )
 
             DispatchQueue.main.async { [weak self] in
                 self?.applyCollection(
                     battery: newBattery,
-                    deltas: deltas
+                    deltas: deltas,
+                    profileDetection: profileDetection
                 )
             }
         }
@@ -832,10 +854,14 @@ final class EnergyMonitor: ObservableObject {
 
     private func applyCollection(
         battery newBattery: BatterySnapshot?,
-        deltas: [ProcessDelta]
+        deltas: [ProcessDelta],
+        profileDetection: UsageProfileDetection
     ) {
         collectionIsInFlight = false
         guard isRunning else { return }
+
+        // Exactly one invalidation for the complete sensor transaction.
+        objectWillChange.send()
 
         handleRuntimeTransition(from: previousBattery, to: newBattery)
 
@@ -910,6 +936,10 @@ final class EnergyMonitor: ObservableObject {
             session.records[appKey] = appRecord
         }
 
+        if profileDetection != detectedUsageProfileSnapshot {
+            detectedUsageProfileSnapshot = profileDetection
+        }
+
         session.observedDischargeMilliwattHours += discharge
         session.updatedAt = .now
 
@@ -932,6 +962,20 @@ final class EnergyMonitor: ObservableObject {
 
         if saveCounter >= max(1, Int(30 / sampleInterval)) {
             saveCounter = 0
+            persistSnapshots(
+                session: session,
+                runtimeStatistics: runtimeStatistics
+            )
+        }
+    }
+
+    private func persistSnapshots(
+        session: MonitorSession,
+        runtimeStatistics: RuntimeStatistics
+    ) {
+        let store = self.store
+        let runtimeStore = self.runtimeStore
+        persistenceQueue.async {
             store.save(session)
             runtimeStore.save(runtimeStatistics)
         }

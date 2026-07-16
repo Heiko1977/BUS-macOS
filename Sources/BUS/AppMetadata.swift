@@ -6,11 +6,11 @@ enum AppMetadata {
     static let creators = "von Heiko Große & ChatGPT © 2026"
 
     static var version: String {
-        Bundle.main.object(forInfoDictionaryKey: "CFBundleShortVersionString") as? String ?? "0.8.1"
+        Bundle.main.object(forInfoDictionaryKey: "CFBundleShortVersionString") as? String ?? "0.9.1"
     }
 
     static var build: String {
-        Bundle.main.object(forInfoDictionaryKey: "CFBundleVersion") as? String ?? "35"
+        Bundle.main.object(forInfoDictionaryKey: "CFBundleVersion") as? String ?? "46"
     }
 
     static var versionLabel: String {

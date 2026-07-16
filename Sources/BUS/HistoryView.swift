@@ -43,6 +43,10 @@ struct HistoryView: View {
                 }
                 .padding(20)
                 .frame(maxWidth: .infinity, alignment: .topLeading)
+                // History is informational. Let the enclosing NSScrollView
+                // receive trackpad events without traversing every label,
+                // divider and chart in the SwiftUI responder tree.
+                .allowsHitTesting(false)
             }
         }
     }

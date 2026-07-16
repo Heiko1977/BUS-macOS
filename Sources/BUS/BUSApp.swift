@@ -3,10 +3,10 @@ import SwiftUI
 @main
 struct BUSApp: App {
     @NSApplicationDelegateAdaptor(BUSAppDelegate.self) private var appDelegate
-    @StateObject private var monitor = EnergyMonitor.shared
     @StateObject private var localizer = Localizer.shared
-    @StateObject private var presentation =
-        DashboardPresentationStore.shared
+    private let monitor = EnergyMonitor.shared
+    private let presentation = DashboardPresentationStore.shared
+    private let chartPresentation = DashboardChartStore.shared
 
     var body: some Scene {
         Window(AppMetadata.windowTitle, id: "main") {
@@ -14,6 +14,7 @@ struct BUSApp: App {
                 .environmentObject(monitor)
                 .environmentObject(localizer)
                 .environmentObject(presentation)
+                .environmentObject(chartPresentation)
                 .localizedEnvironment(localizer)
                 .frame(minWidth: 760, minHeight: 620)
         }
@@ -24,16 +25,11 @@ struct BUSApp: App {
                 .environmentObject(monitor)
                 .environmentObject(localizer)
                 .environmentObject(presentation)
+                .environmentObject(chartPresentation)
                 .localizedEnvironment(localizer)
         } label: {
-            Label(
-                presentation.frame.busScore > 0
-                    ? "BUS \(presentation.frame.busScore)"
-                    : "BUS –",
-                systemImage: presentation.frame.isOnBattery
-                    ? "battery.75percent"
-                    : "battery.100percent.bolt"
-            )
+            MenuBarStatusLabel()
+                .environmentObject(presentation)
         }
         .menuBarExtraStyle(.window)
 
@@ -42,8 +38,24 @@ struct BUSApp: App {
                 .environmentObject(monitor)
                 .environmentObject(localizer)
                 .environmentObject(presentation)
+                .environmentObject(chartPresentation)
                 .localizedEnvironment(localizer)
                 .frame(width: 620)
         }
+    }
+}
+
+private struct MenuBarStatusLabel: View {
+    @EnvironmentObject private var presentation: DashboardPresentationStore
+
+    var body: some View {
+        Label(
+            presentation.frame.busScore > 0
+                ? "BUS \(presentation.frame.busScore)"
+                : "BUS –",
+            systemImage: presentation.frame.isOnBattery
+                ? "battery.75percent"
+                : "battery.100percent.bolt"
+        )
     }
 }

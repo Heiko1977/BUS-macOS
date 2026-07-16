@@ -55,6 +55,7 @@ struct ScoreBreakdownCard: View {
             }
             .frame(maxWidth: .infinity, minHeight: 205, alignment: .topLeading)
         }
+        .allowsHitTesting(false)
     }
 
     private func breakdownRow(title: String, value: String) -> some View {
@@ -145,6 +146,7 @@ struct RuntimeStatisticsCard: View {
             }
             .frame(maxWidth: .infinity, minHeight: 205, alignment: .topLeading)
         }
+        .allowsHitTesting(false)
     }
 
     private func runtimeRow(
@@ -212,6 +214,7 @@ struct RuntimeSessionsView: View {
                 }
             }
         }
+        .allowsHitTesting(false)
     }
 
     private func formatHours(_ hours: Double) -> String {

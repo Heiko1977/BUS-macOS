@@ -22,7 +22,7 @@ let package = Package(
             path: "Sources/BUS",
             linkerSettings: [
                 .linkedFramework("AppKit"),
-                .linkedFramework("Charts"),
+                .linkedFramework("QuartzCore"),
                 .linkedFramework("IOKit"),
                 .linkedFramework("ServiceManagement"),
                 .linkedFramework("SwiftUI"),

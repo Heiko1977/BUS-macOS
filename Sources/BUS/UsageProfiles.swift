@@ -65,7 +65,7 @@ enum UsageProfileKind: String, CaseIterable, Codable, Identifiable {
     }
 }
 
-struct UsageProfileDetection {
+struct UsageProfileDetection: Equatable {
     let kind: UsageProfileKind
     let confidence: Double
 }

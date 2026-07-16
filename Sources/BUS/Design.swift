@@ -1,5 +1,82 @@
 import SwiftUI
 
+/// A compositor-friendly Liquid Glass surface for scrolling content.
+///
+/// SwiftUI's live `Material` backdrop has to sample and blur the window behind
+/// every card while it moves. A dashboard with many cards therefore becomes
+/// expensive during trackpad scrolling. This surface preserves the layered
+/// glass appearance with static, color-scheme-aware gradients that the window
+/// compositor can move without rebuilding a backdrop filter.
+struct StaticLiquidGlassSurface: View {
+    @Environment(\.colorScheme) private var colorScheme
+
+    let cornerRadius: CGFloat
+    var accent: Color = .mint
+    var intensity: Double = 1
+
+    private var baseColors: [Color] {
+        if colorScheme == .dark {
+            return [
+                Color(red: 0.105, green: 0.125, blue: 0.145)
+                    .opacity(0.94),
+                Color(red: 0.070, green: 0.085, blue: 0.105)
+                    .opacity(0.92),
+                accent.opacity(0.045 * intensity)
+            ]
+        }
+
+        return [
+            Color.white.opacity(0.92),
+            Color(red: 0.91, green: 0.94, blue: 0.96).opacity(0.86),
+            accent.opacity(0.055 * intensity)
+        ]
+    }
+
+    var body: some View {
+        let shape = RoundedRectangle(
+            cornerRadius: cornerRadius,
+            style: .continuous
+        )
+
+        shape
+            .fill(
+                LinearGradient(
+                    colors: baseColors,
+                    startPoint: .topLeading,
+                    endPoint: .bottomTrailing
+                )
+            )
+            .overlay {
+                shape.fill(
+                    LinearGradient(
+                        colors: [
+                            .white.opacity(0.13 * intensity),
+                            .clear,
+                            accent.opacity(0.018 * intensity)
+                        ],
+                        startPoint: .top,
+                        endPoint: .bottomTrailing
+                    )
+                )
+            }
+            .overlay {
+                shape.stroke(
+                    LinearGradient(
+                        colors: [
+                            .white.opacity(colorScheme == .dark ? 0.28 : 0.72),
+                            .white.opacity(0.06),
+                            accent.opacity(0.14 * intensity)
+                        ],
+                        startPoint: .topLeading,
+                        endPoint: .bottomTrailing
+                    ),
+                    lineWidth: 1
+                )
+            }
+            .allowsHitTesting(false)
+    }
+}
+
 struct GlassCard<Content: View>: View {
     let content: Content
 
@@ -15,47 +92,7 @@ struct GlassCard<Content: View>: View {
                 alignment: .topLeading
             )
             .background {
-                ZStack {
-                    RoundedRectangle(
-                        cornerRadius: 20,
-                        style: .continuous
-                    )
-                    .fill(.ultraThinMaterial)
-
-                    LinearGradient(
-                        colors: [
-                            .white.opacity(0.105),
-                            .white.opacity(0.024),
-                            .mint.opacity(0.032)
-                        ],
-                        startPoint: .topLeading,
-                        endPoint: .bottomTrailing
-                    )
-                    .clipShape(
-                        RoundedRectangle(
-                            cornerRadius: 20,
-                            style: .continuous
-                        )
-                    )
-                }
-            }
-            .overlay {
-                RoundedRectangle(
-                    cornerRadius: 20,
-                    style: .continuous
-                )
-                .stroke(
-                    LinearGradient(
-                        colors: [
-                            .white.opacity(0.31),
-                            .white.opacity(0.065),
-                            .mint.opacity(0.115)
-                        ],
-                        startPoint: .topLeading,
-                        endPoint: .bottomTrailing
-                    ),
-                    lineWidth: 1
-                )
+                StaticLiquidGlassSurface(cornerRadius: 20)
             }
             .overlay(alignment: .top) {
                 Capsule()
@@ -72,12 +109,8 @@ struct GlassCard<Content: View>: View {
                     )
                     .frame(width: 180, height: 1)
                     .padding(.top, 1)
+                    .allowsHitTesting(false)
             }
-            .shadow(
-                color: .black.opacity(0.18),
-                radius: 16,
-                y: 8
-            )
             .clipShape(
                 RoundedRectangle(
                     cornerRadius: 20,
@@ -118,6 +151,7 @@ struct MetricCard: View {
             }
             .frame(maxWidth: .infinity, minHeight: 96, alignment: .topLeading)
         }
+        .allowsHitTesting(false)
     }
 }
 
@@ -159,6 +193,6 @@ struct ScoreRing: View {
             }
         }
         .frame(width: diameter, height: diameter)
-        .animation(.easeInOut(duration: 0.45), value: score)
+        .allowsHitTesting(false)
     }
 }

@@ -20,9 +20,9 @@ final class RootViewState: ObservableObject {
 }
 
 struct RootView: View {
-    @EnvironmentObject private var monitor: EnergyMonitor
     @EnvironmentObject private var localizer: Localizer
     @StateObject private var state = RootViewState()
+    private let monitor = EnergyMonitor.shared
 
     var body: some View {
         NavigationSplitView {

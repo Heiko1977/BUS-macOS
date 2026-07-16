@@ -189,53 +189,13 @@ struct ChargingDashboardCard: View {
         .frame(maxWidth: .infinity, minHeight: 70, alignment: .topLeading)
         .padding(12)
         .background {
-            ZStack {
-                RoundedRectangle(
-                    cornerRadius: 14,
-                    style: .continuous
-                )
-                .fill(.ultraThinMaterial)
-
-                LinearGradient(
-                    colors: [
-                        .white.opacity(0.080),
-                        .white.opacity(0.018),
-                        .mint.opacity(0.024)
-                    ],
-                    startPoint: .topLeading,
-                    endPoint: .bottomTrailing
-                )
-                .clipShape(
-                    RoundedRectangle(
-                        cornerRadius: 14,
-                        style: .continuous
-                    )
-                )
-            }
-        }
-        .overlay {
-            RoundedRectangle(
+            StaticLiquidGlassSurface(
                 cornerRadius: 14,
-                style: .continuous
-            )
-            .stroke(
-                LinearGradient(
-                    colors: [
-                        .white.opacity(0.25),
-                        .white.opacity(0.045),
-                        .mint.opacity(0.09)
-                    ],
-                    startPoint: .topLeading,
-                    endPoint: .bottomTrailing
-                ),
-                lineWidth: 0.8
+                accent: .mint,
+                intensity: 0.8
             )
         }
-        .shadow(
-            color: .black.opacity(0.10),
-            radius: 8,
-            y: 4
-        )
+        .allowsHitTesting(false)
     }
 
     private func timeMetric(
@@ -260,48 +220,13 @@ struct ChargingDashboardCard: View {
         }
         .padding(10)
         .background {
-            ZStack {
-                RoundedRectangle(
-                    cornerRadius: 12,
-                    style: .continuous
-                )
-                .fill(.ultraThinMaterial)
-
-                LinearGradient(
-                    colors: [
-                        .white.opacity(0.065),
-                        .white.opacity(0.014),
-                        .green.opacity(0.018)
-                    ],
-                    startPoint: .topLeading,
-                    endPoint: .bottomTrailing
-                )
-                .clipShape(
-                    RoundedRectangle(
-                        cornerRadius: 12,
-                        style: .continuous
-                    )
-                )
-            }
-        }
-        .overlay {
-            RoundedRectangle(
+            StaticLiquidGlassSurface(
                 cornerRadius: 12,
-                style: .continuous
-            )
-            .stroke(
-                LinearGradient(
-                    colors: [
-                        .white.opacity(0.21),
-                        .white.opacity(0.035),
-                        .green.opacity(0.075)
-                    ],
-                    startPoint: .topLeading,
-                    endPoint: .bottomTrailing
-                ),
-                lineWidth: 0.7
+                accent: .green,
+                intensity: 0.7
             )
         }
+        .allowsHitTesting(false)
     }
 
     private func watts(_ value: Double) -> String {
@@ -398,12 +323,6 @@ struct AnimatedChargingFlow: View {
             && hasVisibleEnergyFlow
     }
 
-    private var renderingInterval: TimeInterval {
-        // 24 FPS is continuous for this calm flow and leaves substantially
-        // more main-thread/GPU budget for scrolling.
-        1.0 / 24.0
-    }
-
     var body: some View {
         ZStack {
             // Static layer: gradients, paths, symbols and labels are only
@@ -416,37 +335,24 @@ struct AnimatedChargingFlow: View {
                 )
             }
 
-            // Animated layer: only a few small circles move. No gradients,
-            // symbols, labels or flow surfaces are rebuilt per frame.
-            TimelineView(
-                .animation(
-                    minimumInterval: shouldAnimate
-                        ? renderingInterval
-                        : 1,
-                    paused: !shouldAnimate
-                )
-            ) { timeline in
-                Canvas(rendersAsynchronously: true) { context, size in
-                    guard shouldAnimate else { return }
-                    let layout = makeLayout(size: size)
-                    drawParticleLayer(
-                        context: &context,
-                        layout: layout,
-                        time: timeline.date
-                            .timeIntervalSinceReferenceDate
-                    )
-                }
-                .allowsHitTesting(false)
-            }
+            CoreAnimationFlowParticles(
+                chargeShare: particleChargeShare,
+                systemShare: particleSystemShare,
+                hasChargeFlow: particleHasChargeFlow,
+                hasSystemFlow: particleHasSystemFlow,
+                compact: compact,
+                isAnimating: shouldAnimate
+            )
+            .allowsHitTesting(false)
         }
         .frame(height: compact ? 94 : 198)
         .background {
             ZStack {
-                RoundedRectangle(
+                StaticLiquidGlassSurface(
                     cornerRadius: compact ? 18 : 24,
-                    style: .continuous
+                    accent: .cyan,
+                    intensity: 1.15
                 )
-                .fill(.ultraThinMaterial)
 
                 LinearGradient(
                     stops: [
@@ -525,9 +431,40 @@ struct AnimatedChargingFlow: View {
             )
         )
         .accessibilityLabel("Animierter proportionaler Ladefluss")
+        // The flow is purely informational. This also prevents its continuously
+        // refreshed particle layer from participating in scroll hit testing.
+        .allowsHitTesting(false)
         .transaction { transaction in
             transaction.animation = nil
         }
+    }
+
+    private var particleHasChargeFlow: Bool {
+        frame.isCharging && frame.batteryChargingPowerWatts >= 0.05
+    }
+
+    private var particleHasSystemFlow: Bool {
+        frame.estimatedSystemPowerWatts >= 0.05
+    }
+
+    private var particleBranchTotal: Double {
+        max(
+            0.1,
+            (particleHasChargeFlow ? frame.batteryChargingPowerWatts : 0)
+                + (particleHasSystemFlow ? frame.estimatedSystemPowerWatts : 0)
+        )
+    }
+
+    private var particleChargeShare: Double {
+        particleHasChargeFlow
+            ? frame.batteryChargingPowerWatts / particleBranchTotal
+            : 0
+    }
+
+    private var particleSystemShare: Double {
+        particleHasSystemFlow
+            ? frame.estimatedSystemPowerWatts / particleBranchTotal
+            : 0
     }
 
     private struct FlowLayout {
