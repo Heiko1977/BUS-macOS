@@ -846,3 +846,10 @@ FinderInfo- und Resource-Fork-Attribute erneut entfernt und ausdrücklich
 geprüft. Erst das erfolgreich signierte und verifizierte Bundle wird nach
 `/Applications` kopiert. So können Finder, iCloud oder andere File-Provider das
 Bundle während der Signierung nicht erneut mit unzulässigen Attributen versehen.
+
+## BUS 0.9.5 – Dashboard-Kacheln fein ausgerichtet
+
+Version 0.9.5, Build 50. Die Dashboard-Detailkarten wurden kompakter und
+gleichmäßiger ausgerichtet, damit `Persönliche Akkulaufzeit`,
+`Score-Aufschlüsselung` und `Top-Verbraucher` als ruhigeres Kachelraster
+erscheinen. Die Ausführungsansicht bleibt dabei weiterhin detailreicher.
