@@ -4,7 +4,19 @@ import Foundation
 @MainActor
 final class BUSAppDelegate: NSObject, NSApplicationDelegate {
     func applicationDidFinishLaunching(_ notification: Notification) {
-        NSApp.setActivationPolicy(.regular)
+        let shouldStartHidden = LoginItemManager.shared.isEnabled
+            && LaunchBehaviorManager.shared.startHiddenAtLogin
+        NSApp.setActivationPolicy(shouldStartHidden ? .accessory : .regular)
+
+        if shouldStartHidden {
+            DispatchQueue.main.async {
+                if let window = NSApp.windows.first(where: {
+                    $0.title.contains(AppMetadata.appName)
+                }) {
+                    window.close()
+                }
+            }
+        }
     }
 
     func applicationDockMenu(_ sender: NSApplication) -> NSMenu? {

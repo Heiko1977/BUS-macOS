@@ -80,7 +80,8 @@ final class EnergyMonitor: ObservableObject {
         UsageProfileDetection
 
     let deviceProfile = DeviceProfileDatabase.current
-    @Published private(set) var gpuDetails = DeviceProfileDatabase.gpuDetails
+    @Published private(set) var gpuDetails =
+        HardwareProfileStore.load() ?? DeviceProfileDatabase.gpuDetails
 
     private let batteryReader = BatteryReader()
     private let samplingWorker = SamplingWorker()
@@ -159,6 +160,7 @@ final class EnergyMonitor: ObservableObject {
                 DeviceProfileDatabase.readGPUDetails()
             }.value
             self?.gpuDetails = details
+            HardwareProfileStore.save(details)
         }
     }
 
@@ -448,8 +450,17 @@ final class EnergyMonitor: ObservableObject {
             ? detectedUsageProfile
             : profile
 
+        let learnedSummary = learnedProfileSummary(for: effective)
+        if learnedSummary.count >= 3, let learned = learnedSummary.medianHours {
+            return learned
+        }
+
         guard let base = manufacturerReferenceHours else { return nil }
-        return base * effective.referenceMultiplier
+        return base
+            * effective.referenceMultiplier
+            * effective.gpuHardwareMultiplier(
+                gpuCoreCount: gpuDetails.gpuCoreCount
+            )
     }
 
     var usageProfileReferenceHours: Double? {
@@ -475,6 +486,17 @@ final class EnergyMonitor: ObservableObject {
     var personalRuntimeSummary: PersonalRuntimeSummary {
         PersonalRuntimeSummary(
             qualifiedSessions: runtimeStatistics.sessions.filter(\.isQualified)
+        )
+    }
+
+    func learnedProfileSummary(
+        for profile: UsageProfileKind
+    ) -> ProfileRuntimeSummary {
+        ProfileRuntimeSummary(
+            profile: profile,
+            qualifiedSessions: runtimeStatistics.sessions.filter {
+                $0.isQualified && $0.usageProfile == profile
+            }
         )
     }
 
@@ -1059,6 +1081,7 @@ final class EnergyMonitor: ObservableObject {
             id: UUID(),
             startedAt: active.startedAt,
             endedAt: active.latestSnapshot.date,
+            usageProfile: activeUsageProfile,
             startPercent: active.startPercent,
             endPercent: active.latestSnapshot.percent,
             startEnergyMilliwattHours: active.startEnergyMilliwattHours,

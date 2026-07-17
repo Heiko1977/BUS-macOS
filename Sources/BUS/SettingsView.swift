@@ -8,6 +8,7 @@ struct BUSSettingsView: View {
     @EnvironmentObject private var monitor: EnergyMonitor
     @EnvironmentObject private var l: Localizer
     @StateObject private var login = LoginItemManager.shared
+    @StateObject private var launchBehavior = LaunchBehaviorManager.shared
     @StateObject private var state = BUSSettingsState()
 
     var body: some View {
@@ -18,6 +19,18 @@ struct BUSSettingsView: View {
                     set: { login.setEnabled($0) }
                 ))
                 if let error = login.lastError { Text(error).font(.caption).foregroundStyle(.red) }
+
+                Toggle(
+                    l.t("startHiddenAtLogin"),
+                    isOn: Binding(
+                        get: { launchBehavior.startHiddenAtLogin },
+                        set: { launchBehavior.startHiddenAtLogin = $0 }
+                    )
+                )
+                .disabled(!login.isEnabled)
+                Text(l.t("startHiddenAtLoginHelp"))
+                    .font(.caption)
+                    .foregroundStyle(.secondary)
 
                 Picker(
                     l.t("language"),

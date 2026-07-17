@@ -73,11 +73,18 @@ enum AppGrouping {
         // ChatGPT and BUS helper processes.
         if bundleID == "com.openai.chat"
             || bundleID.hasPrefix("com.openai.chat.")
-            || lowerName.hasPrefix("chatgpt helper") {
+            || bundleID == "com.openai.codex"
+            || bundleID.hasPrefix("com.openai.codex.")
+            || bundleID.hasPrefix("com.openai.sky.")
+            || lowerName.contains("chatgpt helper")
+            || lowerName.contains("codex")
+            || lowerName.contains("openai") {
             return identity(
                 name: "ChatGPT",
                 bundleIdentifier: "com.openai.chat",
-                preferredURL: NSWorkspace.shared.urlForApplication(withBundleIdentifier: "com.openai.chat")
+                preferredURL: NSWorkspace.shared.urlForApplication(
+                    withBundleIdentifier: "com.openai.chat"
+                )
             )
         }
 

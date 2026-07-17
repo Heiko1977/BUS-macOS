@@ -35,12 +35,13 @@ enum DeviceProfileDatabase {
     }
 
     // Safe placeholder used until the background system_profiler query returns.
-    static let gpuDetails: (name: String, cores: String) = (
-        "Integrierte Apple GPU",
-        "Nicht verfügbar"
+    static let gpuDetails = HardwareDetails(
+        gpuName: "Integrierte Apple GPU",
+        gpuCoreCount: nil,
+        cachedAt: .distantPast
     )
 
-    static func readGPUDetails() -> (name: String, cores: String) {
+    static func readGPUDetails() -> HardwareDetails {
         let process = Process()
         let output = Pipe()
         process.executableURL = URL(fileURLWithPath: "/usr/sbin/system_profiler")
@@ -53,9 +54,23 @@ enum DeviceProfileDatabase {
                   let object = try? JSONSerialization.jsonObject(
                     with: output.fileHandleForReading.readDataToEndOfFile()
                   ) else { return gpuDetails }
-            let name = firstValue(in: object, matching: ["sppci_model", "chipset-model", "spdisplays_device-name"]) ?? gpuDetails.name
-            let cores = firstValue(in: object, matching: ["sppci_cores", "spdisplays_gpun-core-count", "gpu-core-count"]) ?? gpuDetails.cores
-            return (name, cores == "–" ? cores : "\(cores) Kerne")
+            let name = firstValue(
+                in: object,
+                matching: ["sppci_model", "chipset-model", "spdisplays_device-name"]
+            ) ?? gpuDetails.gpuName
+            let cores = firstValue(
+                in: object,
+                matching: [
+                    "sppci_cores",
+                    "spdisplays_gpun-core-count",
+                    "gpu-core-count"
+                ]
+            ).flatMap { Int($0.filter(\.isNumber)) }
+            return HardwareDetails(
+                gpuName: name,
+                gpuCoreCount: cores,
+                cachedAt: .now
+            )
         } catch {
             return gpuDetails
         }

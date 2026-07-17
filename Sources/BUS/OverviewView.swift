@@ -181,8 +181,8 @@ struct OverviewView: View {
                 Divider()
 
                 hardwareRow("Prozessor", DeviceProfileDatabase.processorDescription)
-                hardwareRow("GPU", monitor.gpuDetails.name)
-                hardwareRow("GPU-Kerne", monitor.gpuDetails.cores)
+                hardwareRow("GPU", monitor.gpuDetails.gpuName)
+                hardwareRow("GPU-Kerne", monitor.gpuDetails.gpuCoreDescription)
                 hardwareRow("Arbeitsspeicher", DeviceProfileDatabase.memoryDescription)
                 hardwareRow("Kerne", DeviceProfileDatabase.coreDescription)
                 hardwareRow("Akku-Referenz", monitor.deviceProfile.batteryWattHours.map { String(format: "%.1f Wh", $0) } ?? "–")

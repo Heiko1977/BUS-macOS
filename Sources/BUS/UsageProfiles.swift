@@ -63,6 +63,24 @@ enum UsageProfileKind: String, CaseIterable, Codable, Identifiable {
         case .mixed: return .blue
         }
     }
+
+    func gpuHardwareMultiplier(gpuCoreCount: Int?) -> Double {
+        guard let gpuCoreCount, gpuCoreCount > 0 else {
+            return 1
+        }
+
+        switch self {
+        case .creative, .video, .gaming:
+            let baseline = 8.0
+            let delta = Double(gpuCoreCount) - baseline
+            let adjustment = delta > 0
+                ? 1 - min(0.22, delta * 0.025)
+                : 1 + min(0.12, abs(delta) * 0.015)
+            return min(1.12, max(0.78, adjustment))
+        default:
+            return 1
+        }
+    }
 }
 
 struct UsageProfileDetection: Equatable {

@@ -4,6 +4,7 @@ struct MenuBarView: View {
     @EnvironmentObject private var monitor: EnergyMonitor
     @EnvironmentObject private var l: Localizer
     @Environment(\.openWindow) private var openWindow
+    @Environment(\.dismiss) private var dismiss
 
     var body: some View {
         VStack(alignment: .leading, spacing: 14) {
@@ -144,6 +145,7 @@ struct MenuBarView: View {
 
             HStack {
                 Button(l.t("openOverview")) {
+                    dismiss()
                     NSApp.activate(ignoringOtherApps: true)
                     openWindow(id: "main")
                 }
