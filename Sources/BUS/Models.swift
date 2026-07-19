@@ -86,6 +86,15 @@ struct BatterySnapshot: Codable, Equatable {
     }
 }
 
+enum HistoryPowerState: String, Codable, Hashable {
+    /// An estimated low-power interval while the Mac was asleep or BUS was
+    /// unable to sample. This is deliberately distinct from a live reading.
+    case standbyEstimate
+    /// The preceding session predates the current system boot, so no power was
+    /// consumed while the machine was switched off.
+    case poweredOff
+}
+
 struct BatteryHistoryPoint: Identifiable, Codable, Hashable {
     let id: UUID
     let date: Date
@@ -93,6 +102,10 @@ struct BatteryHistoryPoint: Identifiable, Codable, Hashable {
     let powerWatts: Double?
     let signedPowerWatts: Double?
     let externalConnected: Bool
+    /// Stored so a later sampling gap can derive a standby draw from the
+    /// actual energy lost by this Mac, rather than joining two live samples.
+    let energyMilliwattHours: Double?
+    let estimatedPowerState: HistoryPowerState?
 
     init(snapshot: BatterySnapshot) {
         id = UUID()
@@ -101,11 +114,31 @@ struct BatteryHistoryPoint: Identifiable, Codable, Hashable {
         powerWatts = snapshot.instantaneousPowerWatts
         signedPowerWatts = snapshot.signedBatteryPowerWatts
         externalConnected = snapshot.externalConnected
+        energyMilliwattHours = snapshot.energyMilliwattHours
+        estimatedPowerState = nil
+    }
+
+    init(
+        date: Date,
+        percent: Double,
+        signedPowerWatts: Double,
+        externalConnected: Bool,
+        energyMilliwattHours: Double?,
+        estimatedPowerState: HistoryPowerState
+    ) {
+        id = UUID()
+        self.date = date
+        self.percent = percent
+        powerWatts = abs(signedPowerWatts)
+        self.signedPowerWatts = signedPowerWatts
+        self.externalConnected = externalConnected
+        self.energyMilliwattHours = energyMilliwattHours
+        self.estimatedPowerState = estimatedPowerState
     }
 
     private enum CodingKeys: String, CodingKey {
         case id, date, percent, powerWatts, signedPowerWatts
-        case externalConnected
+        case externalConnected, energyMilliwattHours, estimatedPowerState
     }
 
     init(from decoder: Decoder) throws {
@@ -121,6 +154,14 @@ struct BatteryHistoryPoint: Identifiable, Codable, Hashable {
             Bool.self,
             forKey: .externalConnected
         ) ?? false
+        energyMilliwattHours = try container.decodeIfPresent(
+            Double.self,
+            forKey: .energyMilliwattHours
+        )
+        estimatedPowerState = try container.decodeIfPresent(
+            HistoryPowerState.self,
+            forKey: .estimatedPowerState
+        )
 
         if let stored = try container.decodeIfPresent(
             Double.self,

@@ -205,21 +205,59 @@ private final class RasterChartNSView: NSView {
             line.stroke()
         }
 
-        for item in points {
-            guard let watts = signedPower(item) else {
+        for sample in displayedPowerSamples {
+            guard let watts = sample.watts else {
                 render(run)
                 run.removeAll(keepingCapacity: true)
                 continue
             }
             let included = positive ? watts >= 0 : watts < 0
             if included {
-                run.append(chartPoint(watts, date: item.date, plot: plot))
+                run.append(chartPoint(watts, date: sample.date, plot: plot))
             } else {
                 render(run)
                 run.removeAll(keepingCapacity: true)
             }
         }
         render(run)
+    }
+
+    /// Existing histories from before BUS 1.1.2 do not yet contain persisted
+    /// gap markers. Expand those histories for rendering as well, so users get
+    /// the corrected curve immediately after updating instead of only after
+    /// the next sleep/offline interval.
+    private var displayedPowerSamples: [(date: Date, watts: Double?)] {
+        guard points.count > 1 else {
+            return points.map { ($0.date, signedPower($0)) }
+        }
+
+        var samples: [(date: Date, watts: Double?)] = []
+        for index in points.indices {
+            let point = points[index]
+            samples.append((point.date, signedPower(point)))
+            guard index < points.index(before: points.endIndex) else { continue }
+
+            let next = points[points.index(after: index)]
+            let gap = next.date.timeIntervalSince(point.date)
+            // Newly saved histories already contain two explicit estimated
+            // points. Do not insert a second pair for them.
+            guard gap >= 5 * 60,
+                  point.estimatedPowerState == nil,
+                  next.estimatedPowerState == nil else { continue }
+
+            let transition = min(120, max(30, gap * 0.025))
+            let start = point.date.addingTimeInterval(transition)
+            let end = next.date.addingTimeInterval(-transition)
+            guard start < end else { continue }
+
+            // Legacy data cannot tell us whether a former gap was a shutdown
+            // or standby. Use the same conservative local standby fallback as
+            // the monitor; future gaps use the measured local energy delta.
+            let fallbackWatts = next.externalConnected ? -0.12 : 0.12
+            samples.append((start, fallbackWatts))
+            samples.append((end, fallbackWatts))
+        }
+        return samples
     }
 
     private func drawTimeLabels(in plot: CGRect) {

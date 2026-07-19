@@ -76,6 +76,15 @@ final class EnergyMonitor: ObservableObject {
             )
         }
     }
+
+    @Published private(set) var automaticProfileLookbackDays: Int {
+        didSet {
+            UserDefaults.standard.set(
+                automaticProfileLookbackDays,
+                forKey: "BUS.automaticProfileLookbackDays"
+            )
+        }
+    }
     private(set) var detectedUsageProfileSnapshot:
         UsageProfileDetection
 
@@ -101,6 +110,7 @@ final class EnergyMonitor: ObservableObject {
     private var previousBattery: BatterySnapshot?
     private var chargeLearningSamples: [ChargeLearningSample]
     private var chargeLearningAnchor: BatterySnapshot?
+    private var activeProfileStartedAt: Date
     private var saveCounter = 0
 
     private init() {
@@ -121,6 +131,9 @@ final class EnergyMonitor: ObservableObject {
                 forKey: "BUS.selectedUsageProfile"
             ) ?? ""
         ) ?? .automatic
+        let lookback = Self.clampedAutomaticProfileLookbackDays(
+            defaults.object(forKey: "BUS.automaticProfileLookbackDays") as? Int ?? 3
+        )
 
         let initialBattery = batteryReader.read()
         let loadedSession = store.load() ?? MonitorSession.fresh(
@@ -128,7 +141,10 @@ final class EnergyMonitor: ObservableObject {
         )
         let initialSession = AppGrouping.normalize(session: loadedSession)
         var loadedRuntime = runtimeStore.load()
-        let learnedChargeSamples = ChargeLearningStore().load()
+        let maximumDataCutoff = Date.now.addingTimeInterval(-30 * 24 * 3600)
+        let learnedChargeSamples = ChargeLearningStore().load().filter {
+            $0.date >= maximumDataCutoff
+        }
 
         if let initialBattery, !initialBattery.externalConnected {
             if var active = loadedRuntime.active {
@@ -147,6 +163,7 @@ final class EnergyMonitor: ObservableObject {
         manufacturerRuntimeOverrideHours =
             Self.clampedManufacturerRuntimeOverride(override)
         selectedUsageProfile = selectedProfile
+        automaticProfileLookbackDays = lookback
         detectedUsageProfileSnapshot = UsageProfileDetector.detect(
             from: Array(initialSession.records.values)
         )
@@ -157,6 +174,24 @@ final class EnergyMonitor: ObservableObject {
         chargeLearningSamples = learnedChargeSamples
         chargeLearningAnchor = initialBattery?.isCharging == true
             && initialBattery?.externalConnected == true ? initialBattery : nil
+        activeProfileStartedAt = initialBattery?.date ?? .now
+        runtimeStatistics.sessions.removeAll {
+            $0.endedAt < profileReferenceCutoffDate
+        }
+        runtimeStatistics.profileUsage.removeAll {
+            $0.endedAt < profileReferenceCutoffDate
+        }
+        if initialBattery?.externalConnected == false {
+            let currentProfile = activeUsageProfile
+            if runtimeStatistics.activeProfileUsage?.profile != currentProfile {
+                runtimeStatistics.activeProfileUsage = ActiveProfileUsage(
+                    profile: currentProfile,
+                    startedAt: initialBattery?.date ?? .now
+                )
+            }
+        } else {
+            runtimeStatistics.activeProfileUsage = nil
+        }
 
         _ = samplingWorker.sampleProcesses()
         runtimeStore.save(runtimeStatistics)
@@ -526,28 +561,142 @@ final class EnergyMonitor: ObservableObject {
             : selectedUsageProfile
     }
 
-    func referenceHours(
-        for profile: UsageProfileKind
-    ) -> Double? {
-        let effective = profile == .automatic
-            ? detectedUsageProfile
-            : profile
+    var activeUsageProfileElapsed: TimeInterval {
+        max(0, Date.now.timeIntervalSince(activeProfileStartedAt))
+    }
 
-        let learnedSummary = learnedProfileSummary(for: effective)
+    var activeUsageProfileElapsedText: String {
+        let minutes = max(0, Int((activeUsageProfileElapsed / 60).rounded()))
+        return "\(minutes / 60) h \(minutes % 60) min"
+    }
+
+    private var predictionCutoffDate: Date {
+        Date.now.addingTimeInterval(
+            -Double(automaticProfileLookbackDays) * 24 * 3600
+        )
+    }
+
+    private var profileReferenceCutoffDate: Date {
+        Date.now.addingTimeInterval(-30 * 24 * 3600)
+    }
+
+    private var predictionSessions: [RuntimeSessionRecord] {
+        runtimeStatistics.sessions.filter {
+            $0.isQualified && $0.endedAt >= predictionCutoffDate
+        }
+    }
+
+    private var profileReferenceSessions: [RuntimeSessionRecord] {
+        runtimeStatistics.sessions.filter {
+            $0.isQualified && $0.endedAt >= profileReferenceCutoffDate
+        }
+    }
+
+    /// The recent profile distribution determines the automatic comparison
+    /// mix. The actual runtime reference of each profile remains based on up
+    /// to 30 days of comparable sessions.
+    private var automaticProfileMix: [UsageProfileKind: Double] {
+        let cutoff = predictionCutoffDate
+        var durations: [UsageProfileKind: TimeInterval] = [:]
+
+        for record in runtimeStatistics.profileUsage where record.profile != .automatic {
+            let start = max(record.startedAt, cutoff)
+            let duration = max(0, record.endedAt.timeIntervalSince(start))
+            guard duration > 0 else { continue }
+            durations[record.profile, default: 0] += duration
+        }
+
+        if let active = runtimeStatistics.activeProfileUsage,
+           active.profile != .automatic,
+           battery?.externalConnected == false {
+            let start = max(active.startedAt, cutoff)
+            let duration = max(0, Date.now.timeIntervalSince(start))
+            if duration > 0 {
+                durations[active.profile, default: 0] += duration
+            }
+        }
+
+        // Existing installations do not yet have interval-level profile data.
+        // Use their qualified session durations as a migration fallback until
+        // BUS has collected the more precise intervals above.
+        if durations.isEmpty {
+            for session in predictionSessions where session.usageProfile != .automatic {
+                durations[session.usageProfile, default: 0] += session.duration
+            }
+        }
+
+        let total = durations.values.reduce(0, +)
+        guard total > 0 else { return [:] }
+        return durations.mapValues { $0 / total }
+    }
+
+    /// The qualified local sessions currently used for the personal reference.
+    var predictionSessionCount: Int { predictionSessions.count }
+
+    /// Charge-learning data is intentionally limited to 30 days, independent
+    /// of the shorter automatic-profile comparison window.
+    var chargeLearningSampleCount: Int { chargeLearningSamples.count }
+
+    var personalPredictionConfidenceKey: String {
+        switch predictionSessionCount {
+        case 12...:
+            return "predictionConfidenceHigh"
+        case 3...:
+            return "predictionConfidenceMedium"
+        default:
+            return "predictionConfidenceLearning"
+        }
+    }
+
+    func referenceHours(for profile: UsageProfileKind) -> Double? {
+        if profile == .automatic,
+           let mixedReference = automaticMixedReferenceHours {
+            return mixedReference
+        }
+
+        let effective = profile == .automatic ? detectedUsageProfile : profile
+        return referenceHoursForSingleProfile(effective)
+    }
+
+    private func referenceHoursForSingleProfile(
+        _ profile: UsageProfileKind
+    ) -> Double? {
+        let learnedSummary = learnedProfileSummary(for: profile)
         if learnedSummary.count >= 3, let learned = learnedSummary.medianHours {
             return learned
         }
 
         guard let base = manufacturerReferenceHours else { return nil }
         return base
-            * effective.referenceMultiplier
-            * effective.gpuHardwareMultiplier(
+            * profile.referenceMultiplier
+            * profile.gpuHardwareMultiplier(
                 gpuCoreCount: gpuDetails.gpuCoreCount
             )
     }
 
+    private var automaticMixedReferenceHours: Double? {
+        let mix = automaticProfileMix
+        guard !mix.isEmpty else { return nil }
+
+        var weightedHours = 0.0
+        var resolvedWeight = 0.0
+        for (profile, weight) in mix {
+            guard let hours = referenceHoursForSingleProfile(profile) else {
+                continue
+            }
+            weightedHours += hours * weight
+            resolvedWeight += weight
+        }
+        guard resolvedWeight >= 0.6 else { return nil }
+        return weightedHours / resolvedWeight
+    }
+
     var usageProfileReferenceHours: Double? {
-        referenceHours(for: activeUsageProfile)
+        referenceHours(
+            for: selectedUsageProfile == .automatic
+                ? .automatic
+                : activeUsageProfile
+        )
     }
 
     var usageProfileEfficiencyPercent: Double? {
@@ -568,7 +717,7 @@ final class EnergyMonitor: ObservableObject {
 
     var personalRuntimeSummary: PersonalRuntimeSummary {
         PersonalRuntimeSummary(
-            qualifiedSessions: runtimeStatistics.sessions.filter(\.isQualified)
+            qualifiedSessions: predictionSessions
         )
     }
 
@@ -577,8 +726,8 @@ final class EnergyMonitor: ObservableObject {
     ) -> ProfileRuntimeSummary {
         ProfileRuntimeSummary(
             profile: profile,
-            qualifiedSessions: runtimeStatistics.sessions.filter {
-                $0.isQualified && $0.usageProfile == profile
+            qualifiedSessions: profileReferenceSessions.filter {
+                $0.usageProfile == profile
             }
         )
     }
@@ -838,6 +987,19 @@ final class EnergyMonitor: ObservableObject {
     func updateUsageProfile(_ profile: UsageProfileKind) {
         guard profile != selectedUsageProfile else { return }
         selectedUsageProfile = profile
+        let now = Date.now
+        transitionActiveProfileUsage(
+            to: activeUsageProfile,
+            at: now,
+            snapshot: battery
+        )
+        activeProfileStartedAt = now
+    }
+
+    func updateAutomaticProfileLookbackDays(_ value: Int) {
+        let sanitized = Self.clampedAutomaticProfileLookbackDays(value)
+        guard sanitized != automaticProfileLookbackDays else { return }
+        automaticProfileLookbackDays = sanitized
     }
 
     private static func clampedSampleInterval(_ value: Double) -> Double {
@@ -848,6 +1010,12 @@ final class EnergyMonitor: ObservableObject {
         _ value: Double
     ) -> Double {
         min(max(value, 0), 40)
+    }
+
+    private static func clampedAutomaticProfileLookbackDays(
+        _ value: Int
+    ) -> Int {
+        min(max(value, 1), 30)
     }
 
     func toggleRunning() {
@@ -870,9 +1038,30 @@ final class EnergyMonitor: ObservableObject {
         runtimeStatistics = .empty
         if let snapshot = batteryReader.read(), !snapshot.externalConnected {
             runtimeStatistics.active = Self.newActiveSession(snapshot)
+            runtimeStatistics.activeProfileUsage = ActiveProfileUsage(
+                profile: activeUsageProfile,
+                startedAt: snapshot.date
+            )
         }
         runtimeStore.save(runtimeStatistics)
         startFreshSession(with: batteryReader.read())
+    }
+
+    /// Clears only the local information used for learned runtime and charge
+    /// predictions, while retaining the current dashboard and app records.
+    func deletePersonalPredictionData() {
+        objectWillChange.send()
+        runtimeStatistics = .empty
+        if let snapshot = batteryReader.read(), !snapshot.externalConnected {
+            runtimeStatistics.active = Self.newActiveSession(snapshot)
+        }
+        runtimeStore.save(runtimeStatistics)
+
+        chargeLearningStore.delete()
+        chargeLearningSamples = []
+        chargeLearningAnchor = battery?.isCharging == true
+            && battery?.externalConnected == true ? battery : nil
+        activeProfileStartedAt = battery?.date ?? .now
     }
 
     private func startFreshSession(with snapshot: BatterySnapshot?) {
@@ -881,6 +1070,15 @@ final class EnergyMonitor: ObservableObject {
         session = MonitorSession.fresh(snapshot: snapshot)
         chargeLearningAnchor = snapshot?.isCharging == true
             && snapshot?.externalConnected == true ? snapshot : nil
+        if let snapshot, !snapshot.externalConnected {
+            runtimeStatistics.activeProfileUsage = ActiveProfileUsage(
+                profile: activeUsageProfile,
+                startedAt: snapshot.date
+            )
+        } else {
+            runtimeStatistics.activeProfileUsage = nil
+        }
+        activeProfileStartedAt = snapshot?.date ?? .now
         saveCounter = 0
         _ = samplingWorker.sampleProcesses()
         store.save(session)
@@ -1081,8 +1279,18 @@ final class EnergyMonitor: ObservableObject {
             session.records[appKey] = appRecord
         }
 
+        let profileBeforeUpdate = activeUsageProfile
         if profileDetection != detectedUsageProfileSnapshot {
             detectedUsageProfileSnapshot = profileDetection
+        }
+        if activeUsageProfile != profileBeforeUpdate {
+            let transitionDate = newBattery?.date ?? .now
+            transitionActiveProfileUsage(
+                to: activeUsageProfile,
+                at: transitionDate,
+                snapshot: newBattery
+            )
+            activeProfileStartedAt = transitionDate
         }
 
         session.observedDischargeMilliwattHours += discharge
@@ -1196,9 +1404,9 @@ final class EnergyMonitor: ObservableObject {
         )
         chargeLearningSamples.append(sample)
 
-        // Retain a useful rolling local history without letting this small
-        // auxiliary store grow indefinitely. Recent 120-day samples win.
-        let cutoff = snapshot.date.addingTimeInterval(-120 * 24 * 3600)
+        // Keep at most the most recent 30 days. Older charge behaviour is not
+        // representative enough for a minute-accurate personal estimate.
+        let cutoff = snapshot.date.addingTimeInterval(-30 * 24 * 3600)
         chargeLearningSamples.removeAll { $0.date < cutoff }
         if chargeLearningSamples.count > 3_000 {
             chargeLearningSamples.removeFirst(chargeLearningSamples.count - 3_000)
@@ -1214,13 +1422,54 @@ final class EnergyMonitor: ObservableObject {
 
         if old?.externalConnected == true && !new.externalConnected {
             runtimeStatistics.active = Self.newActiveSession(new)
+            runtimeStatistics.activeProfileUsage = ActiveProfileUsage(
+                profile: activeUsageProfile,
+                startedAt: new.date
+            )
             runtimeStore.save(runtimeStatistics)
             return
         }
 
         if old?.externalConnected == false && new.externalConnected {
             finalizeActiveRuntimeSession(endingWith: new)
+            finishActiveProfileUsage(at: new.date)
         }
+    }
+
+    private func transitionActiveProfileUsage(
+        to profile: UsageProfileKind,
+        at date: Date,
+        snapshot: BatterySnapshot?
+    ) {
+        guard snapshot?.externalConnected == false else {
+            finishActiveProfileUsage(at: date)
+            return
+        }
+        guard runtimeStatistics.activeProfileUsage?.profile != profile else {
+            return
+        }
+        finishActiveProfileUsage(at: date)
+        runtimeStatistics.activeProfileUsage = ActiveProfileUsage(
+            profile: profile,
+            startedAt: date
+        )
+    }
+
+    private func finishActiveProfileUsage(at date: Date) {
+        guard let active = runtimeStatistics.activeProfileUsage else { return }
+        if date.timeIntervalSince(active.startedAt) >= 60 {
+            runtimeStatistics.profileUsage.append(ProfileUsageRecord(
+                id: UUID(),
+                profile: active.profile,
+                startedAt: active.startedAt,
+                endedAt: date
+            ))
+            runtimeStatistics.profileUsage.sort { $0.endedAt > $1.endedAt }
+            runtimeStatistics.profileUsage.removeAll {
+                $0.endedAt < profileReferenceCutoffDate
+            }
+        }
+        runtimeStatistics.activeProfileUsage = nil
     }
 
     private func finalizeActiveRuntimeSession(
@@ -1264,7 +1513,7 @@ final class EnergyMonitor: ObservableObject {
             runtimeStatistics.sessions.append(record)
             runtimeStatistics.sessions.sort { $0.endedAt > $1.endedAt }
 
-            let cutoff = Date().addingTimeInterval(-365 * 24 * 3600)
+            let cutoff = profileReferenceCutoffDate
             runtimeStatistics.sessions.removeAll { $0.endedAt < cutoff }
 
             if runtimeStatistics.sessions.count > 500 {
@@ -1301,9 +1550,100 @@ final class EnergyMonitor: ObservableObject {
             return
         }
 
+        if let last,
+           elapsed >= historyGapThreshold {
+            appendEstimatedPowerGap(
+                after: last,
+                before: snapshot,
+                elapsed: elapsed
+            )
+        }
+
         session.history.append(BatteryHistoryPoint(snapshot: snapshot))
         let cutoff = Date().addingTimeInterval(-7 * 24 * 3600)
         session.history.removeAll { $0.date < cutoff }
+    }
+
+    /// Gaps caused by sleep, a terminated BUS process or a reboot used to be
+    /// connected by a diagonal line in the power chart. Insert two explicit
+    /// boundary samples so that the gap has a plausible state instead. A
+    /// reboot is known from the macOS boot time and is always shown as 0 W;
+    /// otherwise the estimate prefers the actual energy lost over the gap.
+    private var historyGapThreshold: TimeInterval {
+        max(5 * 60, sampleInterval * 6)
+    }
+
+    private func appendEstimatedPowerGap(
+        after previous: BatteryHistoryPoint,
+        before snapshot: BatterySnapshot,
+        elapsed: TimeInterval
+    ) {
+        let bootDate = Date().addingTimeInterval(-ProcessInfo.processInfo.systemUptime)
+        let state: HistoryPowerState = previous.date < bootDate
+            ? .poweredOff
+            : .standbyEstimate
+        let signedWatts = estimatedGapPowerWatts(
+            from: previous,
+            to: snapshot,
+            elapsed: elapsed,
+            state: state
+        )
+
+        // Keep the transitions near the live readings. The centre of the gap
+        // is then a stable standby/offline segment, not an invented ramp.
+        let transition = min(120, max(30, elapsed * 0.025))
+        let startDate = previous.date.addingTimeInterval(transition)
+        let endDate = snapshot.date.addingTimeInterval(-transition)
+        guard startDate < endDate else { return }
+
+        session.history.append(
+            BatteryHistoryPoint(
+                date: startDate,
+                percent: previous.percent,
+                signedPowerWatts: signedWatts,
+                externalConnected: snapshot.externalConnected,
+                energyMilliwattHours: previous.energyMilliwattHours,
+                estimatedPowerState: state
+            )
+        )
+        session.history.append(
+            BatteryHistoryPoint(
+                date: endDate,
+                percent: snapshot.percent,
+                signedPowerWatts: signedWatts,
+                externalConnected: snapshot.externalConnected,
+                energyMilliwattHours: snapshot.energyMilliwattHours,
+                estimatedPowerState: state
+            )
+        )
+    }
+
+    private func estimatedGapPowerWatts(
+        from previous: BatteryHistoryPoint,
+        to snapshot: BatterySnapshot,
+        elapsed: TimeInterval,
+        state: HistoryPowerState
+    ) -> Double {
+        guard state != .poweredOff else { return 0 }
+
+        if let oldEnergy = previous.energyMilliwattHours,
+           let newEnergy = snapshot.energyMilliwattHours {
+            let watts = (newEnergy - oldEnergy) / elapsed * 3.6
+            // Values outside this range almost always mean a capacity gauge
+            // recalibration rather than a sleeping/offline power draw.
+            if watts.isFinite, abs(watts) >= 0.01, abs(watts) <= 5 {
+                return -watts
+            }
+        }
+
+        // Apple does not expose a measured per-model sleep-watt API. This is
+        // intentionally conservative and capacity-scaled until BUS has a
+        // local energy delta for the individual Mac.
+        let capacity = deviceProfile.batteryWattHours ?? 60
+        let standbyWatts = min(max(capacity * 0.002, 0.08), 0.22)
+        return snapshot.externalConnected && snapshot.isCharging
+            ? -standbyWatts
+            : standbyWatts
     }
 
     private func shouldResetAfterChargingEnds(

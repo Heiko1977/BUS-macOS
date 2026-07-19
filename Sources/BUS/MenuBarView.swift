@@ -124,6 +124,12 @@ struct MenuBarView: View {
                         .foregroundStyle(.secondary)
                     Text(l.t(monitor.activeUsageProfile.titleKey))
                         .font(.body.bold())
+                    Text(
+                        "\(l.t("currentProfileTime")): \(monitor.activeUsageProfileElapsedText)"
+                    )
+                    .font(.caption)
+                    .foregroundStyle(.secondary)
+                    .monospacedDigit()
                 }
 
                 Spacer()
@@ -134,6 +140,23 @@ struct MenuBarView: View {
                         .foregroundStyle(efficiency >= 85 ? .green : .orange)
                 }
             }
+
+            Picker(
+                l.t("comparisonProfile"),
+                selection: Binding(
+                    get: { monitor.selectedUsageProfile },
+                    set: { monitor.updateUsageProfile($0) }
+                )
+            ) {
+                ForEach(UsageProfileKind.allCases) { profile in
+                    Label(
+                        l.t(profile.titleKey),
+                        systemImage: profile.icon
+                    )
+                    .tag(profile)
+                }
+            }
+            .pickerStyle(.menu)
 
             Divider()
             Text(l.t("topConsumers")).font(.caption.bold()).foregroundStyle(.secondary)

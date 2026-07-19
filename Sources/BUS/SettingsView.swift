@@ -2,6 +2,7 @@ import SwiftUI
 
 final class BUSSettingsState: ObservableObject {
     @Published var confirmDelete = false
+    @Published var confirmDeletePrediction = false
 }
 
 struct BUSSettingsView: View {
@@ -129,6 +130,55 @@ struct BUSSettingsView: View {
                     )
                     .monospacedDigit()
                 }
+
+                Stepper(
+                    value: Binding(
+                        get: { monitor.automaticProfileLookbackDays },
+                        set: { monitor.updateAutomaticProfileLookbackDays($0) }
+                    ),
+                    in: 1...30
+                ) {
+                    HStack {
+                        Text(l.t("automaticLookback"))
+                        Spacer()
+                        Text("\(monitor.automaticProfileLookbackDays) \(l.t("days"))")
+                            .monospacedDigit()
+                    }
+                }
+
+                Text(
+                    String(
+                        format: l.t("automaticLookbackHelp"),
+                        monitor.automaticProfileLookbackDays
+                    )
+                )
+                .font(.caption)
+                .foregroundStyle(.secondary)
+            }
+
+            Section(l.t("predictionData")) {
+                LabeledContent(l.t("qualifiedSessions")) {
+                    Text("\(monitor.predictionSessionCount)")
+                        .monospacedDigit()
+                }
+                LabeledContent(l.t("chargeLearningData")) {
+                    Text("\(monitor.chargeLearningSampleCount)")
+                        .monospacedDigit()
+                }
+                LabeledContent(l.t("predictionStatus")) {
+                    Text(l.t(monitor.personalPredictionConfidenceKey))
+                }
+                Text(l.t("predictionDataHelp"))
+                    .font(.caption)
+                    .foregroundStyle(.secondary)
+                Button(role: .destructive) {
+                    state.confirmDeletePrediction = true
+                } label: {
+                    Label(
+                        l.t("deletePredictionData"),
+                        systemImage: "trash"
+                    )
+                }
             }
 
             Section(l.t("measurement")) {
@@ -214,6 +264,15 @@ struct BUSSettingsView: View {
         .alert(l.t("confirmDelete"), isPresented: $state.confirmDelete) {
             Button(l.t("cancel"), role: .cancel) {}
             Button(l.t("delete"), role: .destructive) { monitor.deleteAllLocalData() }
+        }
+        .alert(
+            l.t("confirmDeletePredictionData"),
+            isPresented: $state.confirmDeletePrediction
+        ) {
+            Button(l.t("cancel"), role: .cancel) {}
+            Button(l.t("delete"), role: .destructive) {
+                monitor.deletePersonalPredictionData()
+            }
         }
     }
 }

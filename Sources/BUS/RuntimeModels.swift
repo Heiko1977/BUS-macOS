@@ -116,8 +116,69 @@ struct ActiveRuntimeSession: Codable {
 struct RuntimeStatistics: Codable {
     var sessions: [RuntimeSessionRecord]
     var active: ActiveRuntimeSession?
+    var profileUsage: [ProfileUsageRecord]
+    var activeProfileUsage: ActiveProfileUsage?
 
-    static let empty = RuntimeStatistics(sessions: [], active: nil)
+    static let empty = RuntimeStatistics(
+        sessions: [],
+        active: nil,
+        profileUsage: [],
+        activeProfileUsage: nil
+    )
+
+    private enum CodingKeys: String, CodingKey {
+        case sessions, active, profileUsage, activeProfileUsage
+    }
+
+    init(
+        sessions: [RuntimeSessionRecord],
+        active: ActiveRuntimeSession?,
+        profileUsage: [ProfileUsageRecord] = [],
+        activeProfileUsage: ActiveProfileUsage? = nil
+    ) {
+        self.sessions = sessions
+        self.active = active
+        self.profileUsage = profileUsage
+        self.activeProfileUsage = activeProfileUsage
+    }
+
+    init(from decoder: Decoder) throws {
+        let container = try decoder.container(keyedBy: CodingKeys.self)
+        sessions = try container.decodeIfPresent(
+            [RuntimeSessionRecord].self,
+            forKey: .sessions
+        ) ?? []
+        active = try container.decodeIfPresent(
+            ActiveRuntimeSession.self,
+            forKey: .active
+        )
+        profileUsage = try container.decodeIfPresent(
+            [ProfileUsageRecord].self,
+            forKey: .profileUsage
+        ) ?? []
+        activeProfileUsage = try container.decodeIfPresent(
+            ActiveProfileUsage.self,
+            forKey: .activeProfileUsage
+        )
+    }
+}
+
+/// A local interval used only to establish the personal automatic profile mix.
+/// It intentionally records no app or process data.
+struct ProfileUsageRecord: Identifiable, Codable, Hashable {
+    let id: UUID
+    let profile: UsageProfileKind
+    let startedAt: Date
+    let endedAt: Date
+
+    var duration: TimeInterval {
+        max(0, endedAt.timeIntervalSince(startedAt))
+    }
+}
+
+struct ActiveProfileUsage: Codable, Hashable {
+    let profile: UsageProfileKind
+    let startedAt: Date
 }
 
 struct PersonalRuntimeSummary {

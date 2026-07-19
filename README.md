@@ -885,3 +885,37 @@ Version 1.0.0, Build 69.
 - Bis ausreichend vergleichbare Messfenster vorliegen, verwendet BUS eine
   konservative, segmentierte Rückfallkurve. Die Ladeansicht zeigt Anzahl und
   Vertrauensstufe der lokalen Lernwerte an.
+
+## BUS 1.1.0 – Rollierende persönliche Vergleichsprognose
+
+Version 1.1.0, Build 70.
+
+- Im Profil **Automatisch** bildet BUS die persönliche Referenz aus
+  qualifizierten Batteriesitzungen der letzten 1 bis 30 Tage; der Standard
+  beträgt 3 Tage.
+- Laufzeit- und Ladeprognosen bleiben minutengenau und erläutern sichtbar,
+  dass sie auf vergleichbaren lokalen Sitzungen beruhen.
+- Die Einstellungen zeigen Sitzungszahl, Ladedaten und den Lernstatus an und
+  erlauben das gezielte Löschen der persönlichen Vorhersagedaten.
+- Im Menüleistenfenster lässt sich das Vergleichsprofil direkt umstellen;
+  außerdem wird die bisherige Zeit im aktuell erkannten Profil angezeigt.
+
+## BUS 1.1.2 – Leistungsbilanz ohne Lückensprünge
+
+Version 1.1.2, Build 72.
+
+- Lange Lücken im Leistungsverlauf werden nicht mehr diagonal verbunden.
+- Nach einem nachweisbaren Neustart/Ausschalten zeigt die Lücke 0 W.
+- Bei Schlaf oder unterbrochener Erfassung wird der lokale Energieverlust des Macs als Standby-Schätzung verwendet; ohne Energiewert greift eine konservative, kapazitätsabhängige Schätzung.
+
+## BUS 1.1.1 – Persönlicher Profilmix
+
+Version 1.1.1, Build 71.
+
+- BUS lernt die Referenz jedes Nutzungsprofils getrennt aus bis zu 30 Tagen
+  lokaler Batteriesitzungen.
+- Der einstellbare Automatikzeitraum (standardmäßig 3 Tage) bestimmt nur die
+  Gewichtung der tatsächlich verwendeten Profile. Die automatische Prognose
+  verbindet damit eine stabile Datenbasis mit der aktuellen Nutzungsweise.
+- Bei niedrigem Akkustand bleibt die Prozentzahl im farbigen
+  Menüleistensymbol weiß und lesbar.

@@ -56,6 +56,13 @@ struct ProfilesView: View {
                         .font(.caption)
                         .foregroundStyle(.secondary)
 
+                    Text(
+                        "\(l.t("currentProfileTime")): \(monitor.activeUsageProfileElapsedText)"
+                    )
+                    .font(.caption2)
+                    .foregroundStyle(.secondary)
+                    .monospacedDigit()
+
                     Text(profileReferenceStatus(for: monitor.activeUsageProfile))
                         .font(.caption2)
                         .foregroundStyle(.secondary)

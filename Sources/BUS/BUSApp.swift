@@ -248,6 +248,11 @@ private enum MenuBarBatteryImageRenderer {
         if showsPercentInside,
            let percent {
             let text = "\(Int(percent.rounded()))"
+            // At low charge the coloured fill is deliberately vivid.
+            // Keep the number white instead of cutting it out, otherwise it
+            // inherits the yellow/red fill and becomes hard to read.
+            let usesWhitePercentText = isCharging
+                || (isColorized && percent <= 25)
             let paragraph = NSMutableParagraphStyle()
             paragraph.alignment = .center
             let attributes: [NSAttributedString.Key: Any] = [
@@ -266,7 +271,7 @@ private enum MenuBarBatteryImageRenderer {
                 height: textHeight
             )
             NSGraphicsContext.saveGraphicsState()
-            NSGraphicsContext.current?.compositingOperation = isCharging
+            NSGraphicsContext.current?.compositingOperation = usesWhitePercentText
                 ? .sourceOver
                 : .destinationOut
             text.draw(

@@ -115,6 +115,15 @@ struct RuntimeStatisticsCard: View {
                 Label(l.t("personalRuntime"), systemImage: "clock.arrow.2.circlepath")
                     .font(.headline)
 
+                Text(
+                    String(
+                        format: l.t("predictionSubtitle"),
+                        monitor.automaticProfileLookbackDays
+                    )
+                )
+                .font(dashboardMode ? .caption2 : .caption)
+                .foregroundStyle(.secondary)
+
                 runtimeRow(
                     l.t("remainingEstimate"),
                     monitor.currentRemainingRuntimeHours
@@ -124,7 +133,10 @@ struct RuntimeStatisticsCard: View {
                     monitor.currentProjectedFullRuntimeHours
                 )
                 runtimeRow(
-                    l.t("thirtyDayAverage"),
+                    String(
+                        format: l.t("comparisonAverage"),
+                        monitor.automaticProfileLookbackDays
+                    ),
                     summary.thirtyDayAverageHours
                 )
                 runtimeRow(
