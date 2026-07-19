@@ -55,6 +55,10 @@ struct ProfilesView: View {
                     Text(profileStatus)
                         .font(.caption)
                         .foregroundStyle(.secondary)
+
+                    Text(profileReferenceStatus(for: monitor.activeUsageProfile))
+                        .font(.caption2)
+                        .foregroundStyle(.secondary)
                 }
 
                 Spacer()
@@ -118,6 +122,10 @@ struct ProfilesView: View {
                         .font(.callout.bold())
                         .monospacedDigit()
                 }
+
+                Text(profileReferenceStatus(for: profile))
+                    .font(.caption2)
+                    .foregroundStyle(.secondary)
             }
             .padding(15)
             .frame(maxWidth: .infinity, minHeight: 178, alignment: .topLeading)
@@ -145,6 +153,20 @@ struct ProfilesView: View {
             return "\(l.t("automaticallyDetected")) · \(Int((monitor.detectedUsageProfileConfidence * 100).rounded())) %"
         }
         return l.t("manuallySelected")
+    }
+
+    private func profileReferenceStatus(
+        for profile: UsageProfileKind
+    ) -> String {
+        let summary = monitor.learnedProfileSummary(for: profile)
+        if summary.count >= 3, let hours = summary.medianHours {
+            return String(
+                format: l.t("profileReferenceLearned"),
+                summary.count,
+                formatHours(hours)
+            )
+        }
+        return l.t("profileReferenceFallback")
     }
 
     private func formatHours(_ hours: Double?) -> String {

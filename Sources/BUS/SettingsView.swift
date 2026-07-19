@@ -10,6 +10,13 @@ struct BUSSettingsView: View {
     @StateObject private var login = LoginItemManager.shared
     @StateObject private var launchBehavior = LaunchBehaviorManager.shared
     @StateObject private var state = BUSSettingsState()
+    @AppStorage(MenuBarPreferenceKey.batteryDisplayMode)
+    private var menuBarBatteryDisplayMode =
+        MenuBarBatteryDisplayMode.iconWithPercent.rawValue
+    @AppStorage(MenuBarPreferenceKey.colorizeBatteryIcon)
+    private var colorizeMenuBarBatteryIcon = true
+    @AppStorage(MenuBarPreferenceKey.showRemainingTime)
+    private var showMenuBarRemainingTime = true
 
     var body: some View {
         Form {
@@ -46,6 +53,50 @@ struct BUSSettingsView: View {
                         Text("\(language.symbol) \(language.label)").tag(language)
                     }
                 }
+            }
+
+            Section(l.t("menuBar")) {
+                Picker(
+                    l.t("menuBarBatteryDisplay"),
+                    selection: $menuBarBatteryDisplayMode
+                ) {
+                    ForEach(MenuBarBatteryDisplayMode.allCases) { mode in
+                        Text(l.t(mode.titleKey)).tag(mode.rawValue)
+                    }
+                }
+
+                Toggle(
+                    l.t("menuBarColorizeBattery"),
+                    isOn: $colorizeMenuBarBatteryIcon
+                )
+
+                Toggle(
+                    l.t("menuBarShowRemainingTime"),
+                    isOn: $showMenuBarRemainingTime
+                )
+
+                Text(l.t("menuBarRemainingTimeHelp"))
+                    .font(.caption)
+                    .foregroundStyle(.secondary)
+            }
+
+            Section(l.t("debugging")) {
+                Toggle(
+                    l.t("debugLogging"),
+                    isOn: Binding(
+                        get: { DebugLogger.isEnabled },
+                        set: {
+                            UserDefaults.standard.set(
+                                $0,
+                                forKey: DebugLogPreferenceKey.enabled
+                            )
+                            DebugLogger.log("debug logging enabled from settings")
+                        }
+                    )
+                )
+                Text(l.t("debugLoggingHelp"))
+                    .font(.caption)
+                    .foregroundStyle(.secondary)
             }
 
             Section(l.t("usageProfile")) {

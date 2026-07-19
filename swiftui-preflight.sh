@@ -103,8 +103,12 @@ require_text "$SOURCE_DIR/ChargingFlowView.swift" \
   'Die compositor-gestützte Partikel-Ebene fehlt.'
 
 require_text "$SOURCE_DIR/CoreAnimationFlowParticles.swift" \
-  'CAReplicatorLayer()' \
-  'Die Core-Animation-Partikelreplikation fehlt.'
+  'CAShapeLayer()' \
+  'Die Core-Animation-Lichtimpuls-Ebene fehlt.'
+
+require_text "$SOURCE_DIR/CoreAnimationFlowParticles.swift" \
+  'strokeStart' \
+  'Die Core-Animation-Lichtimpulsbewegung fehlt.'
 
 if grep -Fq 'TimelineView(' "$SOURCE_DIR/ChargingFlowView.swift"; then
   fail 'Die Flussanimation invalidiert weiterhin SwiftUI pro Frame.'

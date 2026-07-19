@@ -79,7 +79,8 @@ struct ChargingDashboardCard: View {
                 ) {
                     timeMetric(
                         title: l.t("timeTo80"),
-                        hours: frame.estimatedChargeTimeTo80Hours
+                        hours: frame.estimatedChargeTimeTo80Hours,
+                        status: reachedEightyPercent
                     )
 
                     timeMetric(
@@ -108,6 +109,26 @@ struct ChargingDashboardCard: View {
                         Text(String(format: "%.1f %%/h", rate))
                             .fontWeight(.semibold)
                             .monospacedDigit()
+                    }
+                    .font(.caption)
+                    .foregroundStyle(.secondary)
+                }
+
+                if frame.isCharging {
+                    HStack {
+                        Label(
+                            l.t("chargeLearning"),
+                            systemImage: "chart.line.uptrend.xyaxis"
+                        )
+                        Spacer()
+                        Text(
+                            String(
+                                format: l.t("chargeLearningWindows"),
+                                frame.learnedChargeWindowCount
+                            )
+                        )
+                        Text("·")
+                        Text(l.t(frame.chargeLearningConfidenceKey))
                     }
                     .font(.caption)
                     .foregroundStyle(.secondary)
@@ -200,7 +221,8 @@ struct ChargingDashboardCard: View {
 
     private func timeMetric(
         title: String,
-        hours: Double?
+        hours: Double?,
+        status: String? = nil
     ) -> some View {
         HStack(spacing: 10) {
             Image(systemName: "clock.fill")
@@ -211,7 +233,7 @@ struct ChargingDashboardCard: View {
                     .font(.caption)
                     .foregroundStyle(.secondary)
 
-                Text(formatHours(hours))
+                Text(status ?? formatHours(hours))
                     .font(.headline)
                     .monospacedDigit()
             }
@@ -231,6 +253,13 @@ struct ChargingDashboardCard: View {
 
     private func watts(_ value: Double) -> String {
         String(format: "%.1f W", max(0, value))
+    }
+
+    private var reachedEightyPercent: String? {
+        guard let percent = frame.batteryPercent, percent >= 80 else {
+            return nil
+        }
+        return l.t("reached")
     }
 
     private func formatHours(_ hours: Double?) -> String {
@@ -347,83 +376,71 @@ struct AnimatedChargingFlow: View {
         }
         .frame(height: compact ? 94 : 198)
         .background {
-            ZStack {
-                StaticLiquidGlassSurface(
-                    cornerRadius: compact ? 18 : 24,
-                    accent: .cyan,
-                    intensity: 1.15
-                )
-
-                LinearGradient(
-                    stops: [
-                        .init(color: .white.opacity(0.105), location: 0),
-                        .init(color: .mint.opacity(0.050), location: 0.33),
-                        .init(color: .cyan.opacity(0.030), location: 0.70),
-                        .init(color: .blue.opacity(0.042), location: 1)
-                    ],
-                    startPoint: .topLeading,
-                    endPoint: .bottomTrailing
-                )
-                .clipShape(
-                    RoundedRectangle(
-                        cornerRadius: compact ? 18 : 24,
-                        style: .continuous
+            if !compact {
+                ZStack {
+                    StaticLiquidGlassSurface(
+                        cornerRadius: 24,
+                        accent: .cyan,
+                        intensity: 1.15
                     )
-                )
 
-                RadialGradient(
-                    colors: [
-                        .white.opacity(0.075),
-                        .clear
-                    ],
-                    center: .topLeading,
-                    startRadius: 0,
-                    endRadius: compact ? 110 : 260
-                )
-                .clipShape(
-                    RoundedRectangle(
-                        cornerRadius: compact ? 18 : 24,
-                        style: .continuous
+                    LinearGradient(
+                        stops: [
+                            .init(color: .white.opacity(0.105), location: 0),
+                            .init(color: .mint.opacity(0.050), location: 0.33),
+                            .init(color: .cyan.opacity(0.030), location: 0.70),
+                            .init(color: .blue.opacity(0.042), location: 1)
+                        ],
+                        startPoint: .topLeading,
+                        endPoint: .bottomTrailing
                     )
-                )
+                    .clipShape(
+                        RoundedRectangle(cornerRadius: 24, style: .continuous)
+                    )
+
+                    RadialGradient(
+                        colors: [.white.opacity(0.075), .clear],
+                        center: .topLeading,
+                        startRadius: 0,
+                        endRadius: 260
+                    )
+                    .clipShape(
+                        RoundedRectangle(cornerRadius: 24, style: .continuous)
+                    )
+                }
             }
         }
         .overlay {
-            RoundedRectangle(
-                cornerRadius: compact ? 18 : 24,
-                style: .continuous
-            )
-            .stroke(
-                LinearGradient(
-                    colors: [
-                        .white.opacity(0.34),
-                        .white.opacity(0.075),
-                        .mint.opacity(0.12),
-                        .white.opacity(0.035)
-                    ],
-                    startPoint: .topLeading,
-                    endPoint: .bottomTrailing
-                ),
-                lineWidth: 1
-            )
+            if !compact {
+                RoundedRectangle(cornerRadius: 24, style: .continuous)
+                    .stroke(
+                        LinearGradient(
+                            colors: [
+                                .white.opacity(0.34), .white.opacity(0.075),
+                                .mint.opacity(0.12), .white.opacity(0.035)
+                            ],
+                            startPoint: .topLeading,
+                            endPoint: .bottomTrailing
+                        ),
+                        lineWidth: 1
+                    )
+            }
         }
         .overlay(alignment: .top) {
-            Capsule()
-                .fill(
-                    LinearGradient(
-                        colors: [
-                            .clear,
-                            .white.opacity(0.31),
-                            .clear
-                        ],
-                        startPoint: .leading,
-                        endPoint: .trailing
+            if !compact {
+                Capsule()
+                    .fill(
+                        LinearGradient(
+                            colors: [.clear, .white.opacity(0.31), .clear],
+                            startPoint: .leading,
+                            endPoint: .trailing
+                        )
                     )
-                )
-                .frame(width: compact ? 190 : 460, height: 1.3)
-                .padding(.top, 1)
+                    .frame(width: 460, height: 1.3)
+                    .padding(.top, 1)
+            }
         }
-        .shadow(color: .black.opacity(0.24), radius: 20, y: 10)
+        .shadow(color: compact ? .clear : .black.opacity(0.24), radius: 20, y: 10)
         .clipShape(
             RoundedRectangle(
                 cornerRadius: compact ? 18 : 24,
@@ -509,7 +526,7 @@ struct AnimatedChargingFlow: View {
         let nodeRadius = nodeSize / 2
 
         let leftNodeCenterX: CGFloat = compact ? 25 : 58
-        let rightNodeCenterX = size.width - (compact ? 26 : 59)
+        let rightNodeCenterX = size.width - (compact ? 62 : 59)
 
         let flowStartX = leftNodeCenterX + nodeRadius
         let flowEndX = rightNodeCenterX - nodeRadius
@@ -732,7 +749,18 @@ struct AnimatedChargingFlow: View {
             compact: compact
         )
 
-        if !compact {
+        if compact {
+            drawLabel(
+                context: &context,
+                text: String(format: "%.1f W", layout.chargePower),
+                point: CGPoint(x: layout.rightNodeCenterX + 42, y: layout.batteryEndCenterY)
+            )
+            drawLabel(
+                context: &context,
+                text: String(format: "%.1f W", layout.systemPower),
+                point: CGPoint(x: layout.rightNodeCenterX + 42, y: layout.systemEndCenterY)
+            )
+        } else {
             drawLabel(
                 context: &context,
                 text: String(

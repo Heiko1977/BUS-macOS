@@ -87,6 +87,7 @@ final class EnergyMonitor: ObservableObject {
     private let samplingWorker = SamplingWorker()
     private let store = SessionStore()
     private let runtimeStore = RuntimeStatisticsStore()
+    private let chargeLearningStore = ChargeLearningStore()
     private let samplingQueue = DispatchQueue(
         label: "de.heikogrosse.bus.sampling",
         qos: .utility
@@ -98,6 +99,8 @@ final class EnergyMonitor: ObservableObject {
     private var timer: Timer?
     private var collectionIsInFlight = false
     private var previousBattery: BatterySnapshot?
+    private var chargeLearningSamples: [ChargeLearningSample]
+    private var chargeLearningAnchor: BatterySnapshot?
     private var saveCounter = 0
 
     private init() {
@@ -125,6 +128,7 @@ final class EnergyMonitor: ObservableObject {
         )
         let initialSession = AppGrouping.normalize(session: loadedSession)
         var loadedRuntime = runtimeStore.load()
+        let learnedChargeSamples = ChargeLearningStore().load()
 
         if let initialBattery, !initialBattery.externalConnected {
             if var active = loadedRuntime.active {
@@ -150,6 +154,9 @@ final class EnergyMonitor: ObservableObject {
         session = initialSession
         runtimeStatistics = loadedRuntime
         previousBattery = initialBattery
+        chargeLearningSamples = learnedChargeSamples
+        chargeLearningAnchor = initialBattery?.isCharging == true
+            && initialBattery?.externalConnected == true ? initialBattery : nil
 
         _ = samplingWorker.sampleProcesses()
         runtimeStore.save(runtimeStatistics)
@@ -359,6 +366,29 @@ final class EnergyMonitor: ObservableObject {
         estimatedChargeTimeHours(targetPercent: 100)
     }
 
+    /// Number of comparable, local charge windows currently available for the
+    /// connected power source. It intentionally excludes samples from other
+    /// Mac models and adapter classes.
+    var learnedChargeWindowCount: Int {
+        guard let snapshot = battery else { return 0 }
+        let sourceBucket = chargeSourcePowerBucket(for: snapshot)
+        return chargeLearningSamples.filter {
+            $0.modelIdentifier == deviceProfile.modelIdentifier
+                && $0.sourcePowerBucketWatts == sourceBucket
+        }.count
+    }
+
+    var chargeLearningConfidenceKey: String {
+        switch learnedChargeWindowCount {
+        case 30...:
+            return "chargeLearningHigh"
+        case 12...:
+            return "chargeLearningMedium"
+        default:
+            return "chargeLearningCollecting"
+        }
+    }
+
     var estimatedRuntimeAtCurrentChargeHours: Double? {
         let reference = personalRuntimeSummary.medianHours
             ?? usageProfileReferenceHours
@@ -402,31 +432,84 @@ final class EnergyMonitor: ObservableObject {
 
         let startPercent = max(0, min(100, snapshot.percent))
         let target = max(startPercent, min(100, targetPercent))
+        let sourceBucket = chargeSourcePowerBucket(for: snapshot)
+        let baseRate = batteryChargingPowerWatts / capacityWh * 100
+        var cursor = startPercent
+        var result = 0.0
 
-        let directPercent = max(
-            0,
-            min(target, 80) - startPercent
-        )
-        let taperPercent = max(
-            0,
-            target - max(startPercent, 80)
-        )
+        // Charge controllers do not charge linearly. BUS learns a robust,
+        // local rate in each state-of-charge band and falls back to a
+        // conservative taper only until enough comparable data exists.
+        while cursor < target - 0.0001 {
+            let segment = chargeSegment(for: cursor)
+            let upperBound = min(target, Self.chargeSegmentBounds[segment + 1])
+            let percentInSegment = max(0, upperBound - cursor)
+            let learned = learnedChargeRate(
+                segment: segment,
+                sourceBucket: sourceBucket,
+                displayIsActive: snapshot.displayIsActive
+            )
+            let rate = learned?.rate ?? baseRate * Self.chargeFallbackMultipliers[segment]
+            guard rate.isFinite, rate >= 0.15 else { return nil }
+            result += percentInSegment / rate
+            cursor = upperBound
+        }
 
-        let directEnergyWh = capacityWh * directPercent / 100
-        let taperEnergyWh = capacityWh * taperPercent / 100
-
-        let directHours = directEnergyWh / batteryChargingPowerWatts
-
-        // Above 80%, charging is deliberately tapered. A factor of 1.75
-        // avoids an unrealistically linear full-charge estimate.
-        let taperHours = taperEnergyWh
-            / max(0.5, batteryChargingPowerWatts / 1.75)
-
-        let result = directHours + taperHours
         guard result.isFinite, result > 0, result < 24 else {
             return nil
         }
         return result
+    }
+
+    private static let chargeSegmentBounds: [Double] = [0, 50, 80, 90, 95, 100]
+    private static let chargeFallbackMultipliers: [Double] = [1, 1, 0.57, 0.43, 0.28]
+
+    private func chargeSegment(for percent: Double) -> Int {
+        let bounded = max(0, min(99.999, percent))
+        for index in 0..<(Self.chargeSegmentBounds.count - 1) {
+            if bounded < Self.chargeSegmentBounds[index + 1] {
+                return index
+            }
+        }
+        return Self.chargeSegmentBounds.count - 2
+    }
+
+    private func chargeSourcePowerBucket(for snapshot: BatterySnapshot) -> Int {
+        let watts = snapshot.adapterPowerWatts
+            ?? snapshot.measuredAdapterInputWatts
+            ?? 0
+        guard watts > 0 else { return 0 }
+        return Int((watts / 5).rounded() * 5)
+    }
+
+    private func learnedChargeRate(
+        segment: Int,
+        sourceBucket: Int,
+        displayIsActive: Bool?
+    ) -> (rate: Double, count: Int)? {
+        var candidates = chargeLearningSamples.filter {
+            $0.modelIdentifier == deviceProfile.modelIdentifier
+                && $0.segment == segment
+                && $0.sourcePowerBucketWatts == sourceBucket
+        }
+        guard candidates.count >= 3 else { return nil }
+
+        let matchingDisplay = candidates.filter {
+            $0.displayIsActive == displayIsActive
+        }
+        if matchingDisplay.count >= 3 {
+            candidates = matchingDisplay
+        }
+
+        let sorted = candidates.map(\.percentPerHour).sorted()
+        let trim = sorted.count >= 7 ? Int(Double(sorted.count) * 0.15) : 0
+        let retained = Array(sorted.dropFirst(trim).dropLast(trim))
+        guard !retained.isEmpty else { return nil }
+        let middle = retained.count / 2
+        let rate = retained.count.isMultiple(of: 2)
+            ? (retained[middle - 1] + retained[middle]) / 2
+            : retained[middle]
+        return (rate, candidates.count)
     }
 
     var detectedUsageProfile: UsageProfileKind {
@@ -781,6 +864,9 @@ final class EnergyMonitor: ObservableObject {
         objectWillChange.send()
         store.deleteAll()
         runtimeStore.delete()
+        chargeLearningStore.delete()
+        chargeLearningSamples = []
+        chargeLearningAnchor = nil
         runtimeStatistics = .empty
         if let snapshot = batteryReader.read(), !snapshot.externalConnected {
             runtimeStatistics.active = Self.newActiveSession(snapshot)
@@ -793,6 +879,8 @@ final class EnergyMonitor: ObservableObject {
         battery = snapshot
         previousBattery = snapshot
         session = MonitorSession.fresh(snapshot: snapshot)
+        chargeLearningAnchor = snapshot?.isCharging == true
+            && snapshot?.externalConnected == true ? snapshot : nil
         saveCounter = 0
         _ = samplingWorker.sampleProcesses()
         store.save(session)
@@ -930,6 +1018,7 @@ final class EnergyMonitor: ObservableObject {
         }
 
         battery = newBattery
+        learnChargeCurve(with: newBattery)
         let discharge = observedDischarge(
             from: previousBattery,
             to: newBattery
@@ -1020,21 +1109,101 @@ final class EnergyMonitor: ObservableObject {
             saveCounter = 0
             persistSnapshots(
                 session: session,
-                runtimeStatistics: runtimeStatistics
+                runtimeStatistics: runtimeStatistics,
+                chargeLearningSamples: chargeLearningSamples
             )
         }
     }
 
     private func persistSnapshots(
         session: MonitorSession,
-        runtimeStatistics: RuntimeStatistics
+        runtimeStatistics: RuntimeStatistics,
+        chargeLearningSamples: [ChargeLearningSample]
     ) {
         let store = self.store
         let runtimeStore = self.runtimeStore
+        let chargeLearningStore = self.chargeLearningStore
         persistenceQueue.async {
             store.save(session)
             runtimeStore.save(runtimeStatistics)
+            chargeLearningStore.save(chargeLearningSamples)
         }
+    }
+
+    /// Learns only from uninterrupted, comparable charging windows. Long gaps
+    /// are treated as sleep/standby or an interrupted measurement rather than
+    /// as a rate sample, so they cannot distort the forecast.
+    private func learnChargeCurve(with snapshot: BatterySnapshot?) {
+        guard let snapshot,
+              snapshot.externalConnected,
+              snapshot.isCharging else {
+            chargeLearningAnchor = nil
+            return
+        }
+
+        guard let anchor = chargeLearningAnchor else {
+            chargeLearningAnchor = snapshot
+            return
+        }
+
+        guard anchor.externalConnected,
+              anchor.isCharging,
+              anchor.displayIsActive == snapshot.displayIsActive,
+              chargeSourcePowerBucket(for: anchor)
+                == chargeSourcePowerBucket(for: snapshot) else {
+            chargeLearningAnchor = snapshot
+            return
+        }
+
+        let elapsed = snapshot.date.timeIntervalSince(anchor.date)
+        let minimumWindow = max(60, sampleInterval * 8)
+        let maximumWindow = max(5 * 60, sampleInterval * 24)
+        guard elapsed >= minimumWindow else { return }
+        guard elapsed <= maximumWindow else {
+            chargeLearningAnchor = snapshot
+            return
+        }
+
+        let percentDelta: Double
+        if let oldEnergy = anchor.energyMilliwattHours,
+           let newEnergy = snapshot.energyMilliwattHours,
+           let capacityWh = detectedMaximumBatteryWattHours
+                ?? deviceProfile.batteryWattHours,
+           capacityWh > 0 {
+            percentDelta = max(0, newEnergy - oldEnergy) / (capacityWh * 1000) * 100
+        } else {
+            percentDelta = max(0, snapshot.percent - anchor.percent)
+        }
+
+        // Keep accumulating a very slow but valid charge instead of storing a
+        // noisy near-zero value. The anchor is deliberately retained here.
+        guard percentDelta >= 0.03 else { return }
+
+        let rate = percentDelta / elapsed * 3600
+        guard rate.isFinite, rate >= 0.15, rate <= 120 else {
+            chargeLearningAnchor = snapshot
+            return
+        }
+
+        let midpoint = (anchor.percent + snapshot.percent) / 2
+        let sample = ChargeLearningSample(
+            date: snapshot.date,
+            modelIdentifier: deviceProfile.modelIdentifier,
+            sourcePowerBucketWatts: chargeSourcePowerBucket(for: snapshot),
+            segment: chargeSegment(for: midpoint),
+            displayIsActive: snapshot.displayIsActive,
+            percentPerHour: rate
+        )
+        chargeLearningSamples.append(sample)
+
+        // Retain a useful rolling local history without letting this small
+        // auxiliary store grow indefinitely. Recent 120-day samples win.
+        let cutoff = snapshot.date.addingTimeInterval(-120 * 24 * 3600)
+        chargeLearningSamples.removeAll { $0.date < cutoff }
+        if chargeLearningSamples.count > 3_000 {
+            chargeLearningSamples.removeFirst(chargeLearningSamples.count - 3_000)
+        }
+        chargeLearningAnchor = snapshot
     }
 
     private func handleRuntimeTransition(

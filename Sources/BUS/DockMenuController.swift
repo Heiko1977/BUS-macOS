@@ -6,6 +6,9 @@ final class BUSAppDelegate: NSObject, NSApplicationDelegate {
     func applicationDidFinishLaunching(_ notification: Notification) {
         let shouldStartHidden = LoginItemManager.shared.isEnabled
             && LaunchBehaviorManager.shared.startHiddenAtLogin
+        DebugLogger.log(
+            "didFinishLaunching startHidden=\(shouldStartHidden) loginEnabled=\(LoginItemManager.shared.isEnabled) activationPolicyBefore=\(NSApp.activationPolicy().rawValue)"
+        )
         NSApp.setActivationPolicy(shouldStartHidden ? .accessory : .regular)
 
         if shouldStartHidden {
@@ -13,10 +16,28 @@ final class BUSAppDelegate: NSObject, NSApplicationDelegate {
                 if let window = NSApp.windows.first(where: {
                     $0.title.contains(AppMetadata.appName)
                 }) {
+                    DebugLogger.log("closing main window for hidden login start")
                     window.close()
                 }
             }
         }
+
+        DispatchQueue.main.asyncAfter(deadline: .now() + 1) {
+            DebugLogger.log(
+                "postLaunch windows=\(NSApp.windows.count) visibleWindows=\(NSApp.windows.filter { $0.isVisible }.count) activationPolicy=\(NSApp.activationPolicy().rawValue)"
+            )
+        }
+    }
+
+    func applicationShouldHandleReopen(
+        _ sender: NSApplication,
+        hasVisibleWindows flag: Bool
+    ) -> Bool {
+        DebugLogger.log("dock reopen visibleWindows=\(flag)")
+        if !flag {
+            bringMainWindowForward()
+        }
+        return true
     }
 
     func applicationDockMenu(_ sender: NSApplication) -> NSMenu? {
@@ -125,6 +146,7 @@ final class BUSAppDelegate: NSObject, NSApplicationDelegate {
     }
 
     private func bringMainWindowForward() {
+        DebugLogger.log("bringMainWindowForward")
         NSApp.setActivationPolicy(.regular)
         NSApp.activate(ignoringOtherApps: true)
 
@@ -136,6 +158,9 @@ final class BUSAppDelegate: NSObject, NSApplicationDelegate {
             }
             window.makeKeyAndOrderFront(nil)
             window.orderFrontRegardless()
+            DebugLogger.log("main window ordered front title=\(window.title)")
+        } else {
+            DebugLogger.log("main window not found")
         }
     }
 }

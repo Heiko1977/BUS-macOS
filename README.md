@@ -870,3 +870,18 @@ Version 0.9.5, Build 50. Die Dashboard-Detailkarten wurden kompakter und
 gleichmäßiger ausgerichtet, damit `Persönliche Akkulaufzeit`,
 `Score-Aufschlüsselung` und `Top-Verbraucher` als ruhigeres Kachelraster
 erscheinen. Die Ausführungsansicht bleibt dabei weiterhin detailreicher.
+
+## BUS 1.0.0 – Lokal lernende Ladeprognose
+
+Version 1.0.0, Build 69.
+
+- Ladezeiten werden pro Akkubereich (0–50, 50–80, 80–90, 90–95 und 95–100 %)
+  aus lokalen Ladevorgängen gelernt.
+- Die Lernwerte werden je Mac-Modell und Netzteilklasse getrennt gespeichert;
+  Messungen mit aktivem und ausgeschaltetem Display werden ebenfalls nicht
+  vermischt.
+- Unterbrochene Ladevorgänge sowie Standby-/Ruhezustandslücken werden bewusst
+  verworfen, damit sie die Vorhersage nicht verfälschen.
+- Bis ausreichend vergleichbare Messfenster vorliegen, verwendet BUS eine
+  konservative, segmentierte Rückfallkurve. Die Ladeansicht zeigt Anzahl und
+  Vertrauensstufe der lokalen Lernwerte an.

@@ -19,8 +19,11 @@ struct DashboardPresentationFrame: Equatable {
     var estimatedChargeTimeTo80Hours: Double?
     var estimatedChargeTimeToFullHours: Double?
     var estimatedRuntimeAtCurrentChargeHours: Double?
+    var currentRemainingRuntimeHours: Double?
     var estimatedRuntimeAtFullChargeHours: Double?
     var chargeRatePercentPerHour: Double?
+    var learnedChargeWindowCount: Int
+    var chargeLearningConfidenceKey: String
     var selectedUsageProfile: UsageProfileKind
     var activeUsageProfile: UsageProfileKind
     var detectedUsageProfileConfidence: Double
@@ -56,10 +59,16 @@ struct DashboardPresentationFrame: Equatable {
                 monitor.estimatedChargeTimeToFullHours,
             estimatedRuntimeAtCurrentChargeHours:
                 monitor.estimatedRuntimeAtCurrentChargeHours,
+            currentRemainingRuntimeHours:
+                monitor.currentRemainingRuntimeHours,
             estimatedRuntimeAtFullChargeHours:
                 monitor.estimatedRuntimeAtFullChargeHours,
             chargeRatePercentPerHour:
                 monitor.chargeRatePercentPerHour,
+            learnedChargeWindowCount:
+                monitor.learnedChargeWindowCount,
+            chargeLearningConfidenceKey:
+                monitor.chargeLearningConfidenceKey,
             selectedUsageProfile: monitor.selectedUsageProfile,
             activeUsageProfile: monitor.activeUsageProfile,
             detectedUsageProfileConfidence:

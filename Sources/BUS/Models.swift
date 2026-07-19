@@ -56,6 +56,9 @@ struct BatterySnapshot: Codable, Equatable {
     let helperBatteryPowerWatts: Double?
     let hardwareSource: String?
     let helperSMCAvailable: Bool
+    /// `false` means that the display is off while macOS is still awake.
+    /// It is optional so existing locally stored runtime sessions remain valid.
+    let displayIsActive: Bool?
     let isCharging: Bool
     let externalConnected: Bool
 

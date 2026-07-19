@@ -49,7 +49,13 @@ struct MenuBarView: View {
             HStack {
                 Label(monitor.battery.map { String(format: "%.0f %%", $0.percent) } ?? "–", systemImage: "battery.75percent")
                 Spacer()
-                Label(String(format: "%.1f W", monitor.currentPowerWatts), systemImage: "bolt.fill")
+                Label(
+                    String(
+                        format: "%.1f W",
+                        monitor.displayedAdapterPowerWatts
+                    ),
+                    systemImage: "bolt.fill"
+                )
             }
             .font(.headline).monospacedDigit()
 
@@ -64,10 +70,11 @@ struct MenuBarView: View {
                         )
                         Spacer()
                         Text(
-                            menuTime(
-                                monitor.estimatedChargeTimeTo80Hours
-                            )
+                            monitor.battery?.percent ?? 0 >= 80
+                                ? l.t("reached")
+                                : menuTime(monitor.estimatedChargeTimeTo80Hours)
                         )
+                        .font(.subheadline.weight(.medium))
                         .monospacedDigit()
                     }
 
@@ -82,6 +89,7 @@ struct MenuBarView: View {
                                 monitor.estimatedChargeTimeToFullHours
                             )
                         )
+                        .font(.subheadline.weight(.medium))
                         .monospacedDigit()
                     }
 
@@ -96,31 +104,33 @@ struct MenuBarView: View {
                                 monitor.estimatedRuntimeAtFullChargeHours
                             )
                         )
+                        .font(.subheadline.weight(.medium))
                         .monospacedDigit()
                     }
                 }
-                .font(.caption)
+                .font(.subheadline)
             }
 
             Divider()
 
             HStack(spacing: 10) {
                 Image(systemName: monitor.activeUsageProfile.icon)
+                    .font(.title3)
                     .foregroundStyle(monitor.activeUsageProfile.accent)
 
                 VStack(alignment: .leading, spacing: 1) {
                     Text(l.t("activeProfile"))
-                        .font(.caption2)
+                        .font(.subheadline)
                         .foregroundStyle(.secondary)
                     Text(l.t(monitor.activeUsageProfile.titleKey))
-                        .font(.caption.bold())
+                        .font(.body.bold())
                 }
 
                 Spacer()
 
                 if let efficiency = monitor.usageProfileEfficiencyPercent {
                     Text(String(format: "%.0f %%", efficiency))
-                        .font(.caption.bold())
+                        .font(.body.bold())
                         .foregroundStyle(efficiency >= 85 ? .green : .orange)
                 }
             }

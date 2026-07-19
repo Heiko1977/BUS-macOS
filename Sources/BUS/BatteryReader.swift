@@ -1,4 +1,5 @@
 import Foundation
+import CoreGraphics
 import IOKit
 import IOKit.ps
 
@@ -83,6 +84,7 @@ struct BatteryReader {
             helperBatteryPowerWatts: hardware?.batteryPowerWatts,
             hardwareSource: source,
             helperSMCAvailable: hardware?.smcAvailable ?? false,
+            displayIsActive: CGDisplayIsActive(CGMainDisplayID()) != 0,
             isCharging: bool("IsCharging"),
             externalConnected: bool("ExternalConnected")
         )
