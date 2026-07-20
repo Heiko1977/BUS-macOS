@@ -6,6 +6,10 @@ Eine native macOS-Menüleisten-App zur lokalen Analyse des geschätzten Batterie
 
 **BUS – Battery Usage Score von Heiko Große & ChatGPT © 2026**
 
+> **Changelog-Regel:** Versionsabschnitte werden chronologisch aufsteigend
+> gepflegt. Neue Releases werden am Ende der Versionshistorie ergänzt; Version,
+> Build und Überschrift müssen dabei immer dieselbe Release-Version nennen.
+
 ## App-Vorschau
 
 Die aktuelle Version als native macOS-App:
@@ -646,7 +650,7 @@ BUS soll den gemessenen Akku selbst möglichst wenig beeinflussen.
 
 Version 0.7.0, Build 30.
 
-## BUS 0.8.0 – Build- und Vorabprüfungsfix
+## BUS 0.7.1 – Build- und Vorabprüfungsfix
 
 - Ungültiger Zugriff `monitor.isPaused` wurde durch den vorhandenen Zustand
   `monitor.isRunning` ersetzt.
@@ -909,43 +913,6 @@ Version 1.0.0, Build 69.
   konservative, segmentierte Rückfallkurve. Die Ladeansicht zeigt Anzahl und
   Vertrauensstufe der lokalen Lernwerte an.
 
-## BUS 1.1.4 – Gaming-Erkennung und Lernprofil
-
-Version 1.1.4, Build 74.
-
-- Gaming wird nur noch erkannt, wenn ein echter Spiel-/Runtime-Prozess noch läuft.
-- Steam, Epic, Battle.net und andere Launcher zählen allein nicht mehr als Gaming.
-- Das automatische Profil gewichtet weiterhin die erlernten Profilzeiten des in den Einstellungen gewählten Zeitraums.
-- Bis mindestens drei qualifizierte lokale Sitzungen vorliegen, verwendet BUS die
-  integrierte Modell- und Profilreferenz als stabile Vergleichsbasis.
-
-## BUS 1.1.3 – Einheitliche Leistungsbilanz
-
-Version 1.1.3, Build 73.
-
-- Übersicht und Verlauf verwenden dieselbe Lückenbehandlung der Leistungsbilanz.
-- Zustandsgrenzen für Standby/Offline bleiben auch in der kompakten Übersicht beim Downsampling erhalten.
-
-## BUS 1.1.2 – Leistungsbilanz ohne Lückensprünge
-
-Version 1.1.2, Build 72.
-
-- Lange Lücken im Leistungsverlauf werden nicht mehr diagonal verbunden.
-- Nach einem nachweisbaren Neustart/Ausschalten zeigt die Lücke 0 W.
-- Bei Schlaf oder unterbrochener Erfassung wird der lokale Energieverlust des Macs als Standby-Schätzung verwendet; ohne Energiewert greift eine konservative, kapazitätsabhängige Schätzung.
-
-## BUS 1.1.1 – Persönlicher Profilmix
-
-Version 1.1.1, Build 71.
-
-- BUS lernt die Referenz jedes Nutzungsprofils getrennt aus bis zu 30 Tagen
-  lokaler Batteriesitzungen.
-- Der einstellbare Automatikzeitraum (standardmäßig 3 Tage) bestimmt nur die
-  Gewichtung der tatsächlich verwendeten Profile. Die automatische Prognose
-  verbindet damit eine stabile Datenbasis mit der aktuellen Nutzungsweise.
-- Bei niedrigem Akkustand bleibt die Prozentzahl im farbigen
-  Menüleistensymbol weiß und lesbar.
-
 ## BUS 1.1.0 – Rollierende persönliche Vergleichsprognose
 
 Version 1.1.0, Build 70.
@@ -959,3 +926,40 @@ Version 1.1.0, Build 70.
   erlauben das gezielte Löschen der persönlichen Vorhersagedaten.
 - Im Menüleistenfenster lässt sich das Vergleichsprofil direkt umstellen;
   außerdem wird die bisherige Zeit im aktuell erkannten Profil angezeigt.
+
+## BUS 1.1.1 – Persönlicher Profilmix
+
+Version 1.1.1, Build 71.
+
+- BUS lernt die Referenz jedes Nutzungsprofils getrennt aus bis zu 30 Tagen
+  lokaler Batteriesitzungen.
+- Der einstellbare Automatikzeitraum (standardmäßig 3 Tage) bestimmt nur die
+  Gewichtung der tatsächlich verwendeten Profile. Die automatische Prognose
+  verbindet damit eine stabile Datenbasis mit der aktuellen Nutzungsweise.
+- Bei niedrigem Akkustand bleibt die Prozentzahl im farbigen
+  Menüleistensymbol weiß und lesbar.
+
+## BUS 1.1.2 – Leistungsbilanz ohne Lückensprünge
+
+Version 1.1.2, Build 72.
+
+- Lange Lücken im Leistungsverlauf werden nicht mehr diagonal verbunden.
+- Nach einem nachweisbaren Neustart/Ausschalten zeigt die Lücke 0 W.
+- Bei Schlaf oder unterbrochener Erfassung wird der lokale Energieverlust des Macs als Standby-Schätzung verwendet; ohne Energiewert greift eine konservative, kapazitätsabhängige Schätzung.
+
+## BUS 1.1.3 – Einheitliche Leistungsbilanz
+
+Version 1.1.3, Build 73.
+
+- Übersicht und Verlauf verwenden dieselbe Lückenbehandlung der Leistungsbilanz.
+- Zustandsgrenzen für Standby/Offline bleiben auch in der kompakten Übersicht beim Downsampling erhalten.
+
+## BUS 1.1.4 – Gaming-Erkennung und Lernprofil
+
+Version 1.1.4, Build 74.
+
+- Gaming wird nur noch erkannt, wenn ein echter Spiel-/Runtime-Prozess noch läuft.
+- Steam, Epic, Battle.net und andere Launcher zählen allein nicht mehr als Gaming.
+- Das automatische Profil gewichtet weiterhin die erlernten Profilzeiten des in den Einstellungen gewählten Zeitraums.
+- Bis mindestens drei qualifizierte lokale Sitzungen vorliegen, verwendet BUS die
+  integrierte Modell- und Profilreferenz als stabile Vergleichsbasis.
