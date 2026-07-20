@@ -1,3 +1,4 @@
+import AppKit
 import Foundation
 import SwiftUI
 
@@ -90,8 +91,9 @@ struct UsageProfileDetection: Equatable {
 
 enum UsageProfileDetector {
     static func detect(from records: [AppEnergyRecord]) -> UsageProfileDetection {
+        let now = Date.now
         let active = records.filter {
-            Date().timeIntervalSince($0.lastSeen) <= 10 * 60
+            now.timeIntervalSince($0.lastSeen) <= 10 * 60
         }
 
         guard !active.isEmpty else {
@@ -178,16 +180,44 @@ enum UsageProfileDetector {
                 to: &scores
             )
 
+            // A launcher is not a game. Steam, Epic or Battle.net may remain
+            // open for hours after the actual game has quit. Only count a
+            // gaming signal while it was observed very recently and when the
+            // process name contains a direct game/runtime marker.
+            let directGamingSignal = contains(
+                haystack,
+                [
+                    "steamapps", "game", "wine", "whisky", "crossover",
+                    "unityplayer", "unrealengine", "godot"
+                ]
+            )
+            let gamingLauncherOnly = contains(
+                haystack,
+                [
+                    "steam", "steamwebhelper", "epic games", "battle.net",
+                    "blizzard", "origin", "ubisoft connect"
+                ]
+            ) && !directGamingSignal
+            let gamingRecentlyActive = now.timeIntervalSince(record.lastSeen) <= 90
+            let gamingProcessStillRunning = record.sortedProcesses.contains {
+                guard let running = NSRunningApplication(
+                    processIdentifier: pid_t($0.pid)
+                ) else { return false }
+                guard let runningName = running.localizedName else { return false }
+                return runningName.caseInsensitiveCompare($0.name) == .orderedSame
+            }
+            // Unknown game titles still count when their own process is live;
+            // launcher-only records remain excluded.
+            let gamingSignal = directGamingSignal
+                || (gamingProcessStillRunning && !gamingLauncherOnly)
+            let gamingIsLive = record.processes == nil
+                ? gamingRecentlyActive
+                : gamingProcessStillRunning
+
             add(
                 .gaming,
                 weight: weight,
-                when: contains(
-                    haystack,
-                    [
-                        "steam", "epic games", "battle.net", "wine",
-                        "whisky", "crossover", "game"
-                    ]
-                ),
+                when: gamingSignal && !gamingLauncherOnly && gamingIsLive,
                 to: &scores
             )
 

@@ -1,4 +1,6 @@
-# BUS – Battery Usage Score 0.9.6
+# BUS – Battery Usage Score 1.1.4
+
+Aktuelle Version: **1.1.4 (Build 74)**.
 
 Eine native macOS-Menüleisten-App zur lokalen Analyse des geschätzten Batterieverbrauchs pro App.
 
@@ -906,6 +908,16 @@ Version 1.0.0, Build 69.
 - Bis ausreichend vergleichbare Messfenster vorliegen, verwendet BUS eine
   konservative, segmentierte Rückfallkurve. Die Ladeansicht zeigt Anzahl und
   Vertrauensstufe der lokalen Lernwerte an.
+
+## BUS 1.1.4 – Gaming-Erkennung und Lernprofil
+
+Version 1.1.4, Build 74.
+
+- Gaming wird nur noch erkannt, wenn ein echter Spiel-/Runtime-Prozess noch läuft.
+- Steam, Epic, Battle.net und andere Launcher zählen allein nicht mehr als Gaming.
+- Das automatische Profil gewichtet weiterhin die erlernten Profilzeiten des in den Einstellungen gewählten Zeitraums.
+- Bis mindestens drei qualifizierte lokale Sitzungen vorliegen, verwendet BUS die
+  integrierte Modell- und Profilreferenz als stabile Vergleichsbasis.
 
 ## BUS 1.1.0 – Rollierende persönliche Vergleichsprognose
 
