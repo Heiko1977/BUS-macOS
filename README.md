@@ -1,6 +1,6 @@
-# BUS – Battery Usage Score 1.1.5
+# BUS – Battery Usage Score 1.1.6
 
-Aktuelle Version: **1.1.5 (Build 75)**.
+Aktuelle Version: **1.1.6 (Build 76)**.
 
 Eine native macOS-Menüleisten-App zur lokalen Analyse des geschätzten Batterieverbrauchs pro App.
 
@@ -81,6 +81,15 @@ Die aktuelle Version als native macOS-App:
 </table>
 
 ## Aktuelle Änderungen
+
+## BUS 1.1.6 – macOS-Leistung-reduzieren-Steuerung
+
+Version 1.1.6, Build 76.
+
+- BUS steuert die echte macOS-Funktion „Leistung reduzieren“ jetzt über den installierten Hardware Helper.
+- Die Administratorfreigabe ist dadurch nur noch bei Installation oder Aktualisierung des Helpers nötig; Umschalten in der App benötigt keine weitere Passwortabfrage.
+- Die Schalter für Aus, Ein und Automatisch schreiben einen lokalen Wunschzustand, den der Helper mit `pmset` auf den Batteriebetrieb anwendet.
+- Die Status-Erkennung wertet `pmset` jetzt eindeutig aus, sodass ein ausgeschalteter macOS-Energiesparmodus nicht mehr durch `ProcessInfo` falsch als aktiv angezeigt wird.
 
 ## BUS 1.1.5 – App-Zustandslernen und Energiesparmodus
 

@@ -101,6 +101,8 @@ set -u
 HELPER_ID="de.heikogrosse.bus.hardware"
 PLIST="/Library/LaunchDaemons/${HELPER_ID}.plist"
 install -d -m 755 "/Library/Application Support/BUS"
+touch "/Library/Application Support/BUS/lowpowermode.request"
+chmod 666 "/Library/Application Support/BUS/lowpowermode.request"
 chown root:wheel \
   "/Library/PrivilegedHelperTools/${HELPER_ID}" \
   "$PLIST"

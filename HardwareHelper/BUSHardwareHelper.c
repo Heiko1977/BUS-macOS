@@ -14,12 +14,14 @@
 #include <stdlib.h>
 #include <string.h>
 #include <sys/stat.h>
+#include <sys/wait.h>
 #include <time.h>
 #include <unistd.h>
 
 #define OUTPUT_DIR "/Library/Application Support/BUS"
 #define OUTPUT_FILE OUTPUT_DIR "/hardware.json"
 #define OUTPUT_TMP OUTPUT_DIR "/hardware.json.tmp"
+#define LOW_POWER_COMMAND_FILE OUTPUT_DIR "/lowpowermode.request"
 #define SAMPLE_SECONDS 2
 
 #define KERNEL_INDEX_SMC 2
@@ -68,6 +70,7 @@ typedef struct {
 } SMCReading;
 
 static volatile sig_atomic_t running = 1;
+static time_t last_low_power_command_mtime = 0;
 
 static void stop_handler(int signal_number) {
     (void) signal_number;
@@ -314,6 +317,94 @@ static CFDictionaryRef battery_properties(void) {
 static void ensure_output_directory(void) {
     mkdir(OUTPUT_DIR, 0755);
     chmod(OUTPUT_DIR, 0755);
+
+    int fd = open(
+        LOW_POWER_COMMAND_FILE,
+        O_CREAT | O_CLOEXEC,
+        0666
+    );
+    if (fd >= 0) {
+        close(fd);
+        chmod(LOW_POWER_COMMAND_FILE, 0666);
+    }
+}
+
+static void initialize_low_power_command_marker(void) {
+    struct stat st;
+    if (stat(LOW_POWER_COMMAND_FILE, &st) == 0) {
+        last_low_power_command_mtime = st.st_mtime;
+    }
+}
+
+static bool run_pmset_low_power_mode(char state) {
+    pid_t pid = fork();
+    if (pid < 0) {
+        return false;
+    }
+
+    if (pid == 0) {
+        char value[2] = { state, '\0' };
+        execl(
+            "/usr/bin/pmset",
+            "pmset",
+            "-b",
+            "lowpowermode",
+            value,
+            (char *)NULL
+        );
+        _exit(127);
+    }
+
+    int status = 0;
+    while (waitpid(pid, &status, 0) < 0) {
+        if (errno != EINTR) {
+            return false;
+        }
+    }
+
+    return WIFEXITED(status) && WEXITSTATUS(status) == 0;
+}
+
+static void process_low_power_command(void) {
+    struct stat st;
+    if (stat(LOW_POWER_COMMAND_FILE, &st) != 0) {
+        return;
+    }
+
+    if (st.st_mtime == last_low_power_command_mtime) {
+        return;
+    }
+    last_low_power_command_mtime = st.st_mtime;
+
+    int fd = open(LOW_POWER_COMMAND_FILE, O_RDONLY | O_CLOEXEC | O_NOFOLLOW);
+    if (fd < 0) {
+        return;
+    }
+
+    struct stat opened_st;
+    if (fstat(fd, &opened_st) != 0 || !S_ISREG(opened_st.st_mode)) {
+        close(fd);
+        return;
+    }
+
+    char buffer[32] = {0};
+    ssize_t bytes = read(fd, buffer, sizeof(buffer) - 1);
+    close(fd);
+    if (bytes <= 0) {
+        return;
+    }
+
+    char state = '\0';
+    for (ssize_t index = 0; index < bytes; index++) {
+        if (buffer[index] == '0' || buffer[index] == '1') {
+            state = buffer[index];
+            break;
+        }
+    }
+
+    if (state == '0' || state == '1') {
+        run_pmset_low_power_mode(state);
+    }
 }
 
 static void json_string(FILE *file, const char *value) {
@@ -436,7 +527,7 @@ static void write_json(void) {
     fprintf(file, "{\n");
     fprintf(file, "  \"schema\": 1,\n");
     fprintf(file, "  \"timestamp\": %lld,\n", (long long)now);
-    fprintf(file, "  \"helperVersion\": \"0.5.0\",\n");
+    fprintf(file, "  \"helperVersion\": \"0.6.0\",\n");
     fprintf(file, "  \"smcAvailable\": %s,\n", smc_available ? "true" : "false");
     fprintf(file, "  \"externalConnected\": %s,\n", connected ? "true" : "false");
     fprintf(file, "  \"isCharging\": %s,\n", charging ? "true" : "false");
@@ -494,7 +585,11 @@ int main(void) {
     signal(SIGINT, stop_handler);
     signal(SIGHUP, stop_handler);
 
+    ensure_output_directory();
+    initialize_low_power_command_marker();
+
     while (running) {
+        process_low_power_command();
         write_json();
         for (int i = 0; i < SAMPLE_SECONDS * 10 && running; i++) {
             usleep(100000);

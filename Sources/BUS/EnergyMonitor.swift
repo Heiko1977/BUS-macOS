@@ -130,6 +130,10 @@ final class EnergyMonitor: ObservableObject {
     private var chargeLearningAnchor: BatterySnapshot?
     private var activeProfileStartedAt: Date
     private var saveCounter = 0
+    private static let lowPowerModeRequestURL = URL(
+        fileURLWithPath:
+            "/Library/Application Support/BUS/lowpowermode.request"
+    )
 
     private init() {
         let defaults = UserDefaults.standard
@@ -369,7 +373,12 @@ final class EnergyMonitor: ObservableObject {
     }
 
     var macOSLowPowerModeIsEnabled: Bool {
-        ProcessInfo.processInfo.isLowPowerModeEnabled
+        // ProcessInfo is not a reliable source for the macOS setting.  The
+        // authoritative value is the battery power profile exposed by pmset.
+        if let value = Self.readMacOSLowPowerMode() {
+            return value
+        }
+        return ProcessInfo.processInfo.isLowPowerModeEnabled
     }
 
     var effectiveLowPowerModeIsEnabled: Bool {
@@ -1086,12 +1095,76 @@ final class EnergyMonitor: ObservableObject {
     func updateLowPowerModePreference(_ preference: LowPowerModePreference) {
         guard preference != lowPowerModePreference else { return }
         lowPowerModePreference = preference
+        switch preference {
+        case .on:
+            setMacOSLowPowerMode(true)
+        case .off:
+            setMacOSLowPowerMode(false)
+        case .automatic:
+            reconcileMacOSLowPowerMode(for: battery?.percent)
+        }
     }
 
     func updateLowPowerAutomaticThresholdPercent(_ value: Int) {
         let sanitized = Self.clampedLowPowerThreshold(value)
         guard sanitized != lowPowerAutomaticThresholdPercent else { return }
         lowPowerAutomaticThresholdPercent = sanitized
+        if lowPowerModePreference == .automatic {
+            reconcileMacOSLowPowerMode(for: battery?.percent)
+        }
+    }
+
+    /// Synchronises the real macOS "Low Power Mode" setting through the
+    /// installed BUS hardware helper. The helper already runs as root after
+    /// installation, so changing this setting does not need a second password
+    /// prompt inside the app.
+    private func reconcileMacOSLowPowerMode(for percent: Double?) {
+        guard let percent else { return }
+        let shouldEnable = percent <= Double(lowPowerAutomaticThresholdPercent)
+        guard macOSLowPowerModeIsEnabled != shouldEnable else { return }
+        setMacOSLowPowerMode(shouldEnable)
+    }
+
+    private func setMacOSLowPowerMode(_ enabled: Bool) {
+        let state = enabled ? "1" : "0"
+        let requestURL = Self.lowPowerModeRequestURL
+        DispatchQueue.global(qos: .userInitiated).async { [weak self] in
+            let payload = "\(state)\n"
+            try? payload.write(
+                to: requestURL,
+                atomically: false,
+                encoding: .utf8
+            )
+            DispatchQueue.main.async { [weak self] in
+                self?.objectWillChange.send()
+                DispatchQueue.main.asyncAfter(deadline: .now() + 2.5) {
+                    self?.objectWillChange.send()
+                }
+            }
+        }
+    }
+
+    private static func readMacOSLowPowerMode() -> Bool? {
+        let task = Process()
+        let pipe = Pipe()
+        task.executableURL = URL(fileURLWithPath: "/usr/bin/pmset")
+        task.arguments = ["-g", "custom"]
+        task.standardOutput = pipe
+        task.standardError = Pipe()
+        do {
+            try task.run()
+            task.waitUntilExit()
+            let text = String(
+                data: pipe.fileHandleForReading.readDataToEndOfFile(),
+                encoding: .utf8
+            ) ?? ""
+            guard let range = text.range(of: "lowpowermode") else { return nil }
+            let suffix = text[range.upperBound...]
+            let digits = suffix.split(whereSeparator: { !$0.isNumber })
+            return digits.first.map { $0 == "1" }
+        } catch {
+            return nil
+        }
     }
 
     private static func clampedSampleInterval(_ value: Double) -> Double {
@@ -1312,6 +1385,9 @@ final class EnergyMonitor: ObservableObject {
         }
 
         battery = newBattery
+        if lowPowerModePreference == .automatic {
+            reconcileMacOSLowPowerMode(for: newBattery?.percent)
+        }
         learnChargeCurve(with: newBattery)
         let discharge = observedDischarge(
             from: previousBattery,

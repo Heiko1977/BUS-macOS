@@ -175,6 +175,8 @@ sudo launchctl bootout system/de.heikogrosse.bus.hardware \
   >/dev/null 2>&1 || true
 sudo install -d -m 755 /Library/PrivilegedHelperTools
 sudo install -d -m 755 "/Library/Application Support/BUS"
+sudo touch "/Library/Application Support/BUS/lowpowermode.request"
+sudo chmod 666 "/Library/Application Support/BUS/lowpowermode.request"
 sudo install -m 755 "$HELPER_BUILD" "$HELPER_TARGET"
 sudo install -m 644 \
   "$ROOT/HardwareHelper/de.heikogrosse.bus.hardware.plist" \
