@@ -1,4 +1,4 @@
-# BUS – Battery Usage Score 0.9.6
+# BUS – Battery Usage Score
 
 Eine native macOS-Menüleisten-App zur lokalen Analyse des geschätzten Batterieverbrauchs pro App.
 
