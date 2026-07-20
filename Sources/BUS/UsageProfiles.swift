@@ -119,6 +119,13 @@ enum UsageProfileDetector {
             } ?? 1.0
             let weight = max(0.1, record.score) * recency * foregroundBoost
 
+            let runningProcessNames = record.sortedProcesses.compactMap { process -> String? in
+                guard let running = NSRunningApplication(
+                    processIdentifier: pid_t(process.pid)
+                ) else { return nil }
+                return running.localizedName ?? process.name
+            }
+
             add(
                 .browser,
                 weight: weight,
@@ -188,15 +195,12 @@ enum UsageProfileDetector {
 
             // A launcher is not a game. Steam, Epic or Battle.net may remain
             // open for hours after the actual game has quit. Only count a
-            // gaming signal while it was observed very recently and when the
-            // process name contains a direct game/runtime marker.
-            let directGamingSignal = contains(
-                haystack,
-                [
-                    "steamapps", "game", "wine", "whisky", "crossover",
-                    "unityplayer", "unrealengine", "godot"
-                ]
-            )
+            // gaming signal when the corresponding process is still running.
+            let gamingTerms = [
+                "steamapps", "wine", "whisky", "crossover",
+                "unityplayer", "unrealengine", "godot"
+            ]
+            let directGamingSignal = contains(haystack, gamingTerms)
             let gamingLauncherOnly = contains(
                 haystack,
                 [
@@ -204,8 +208,10 @@ enum UsageProfileDetector {
                     "blizzard", "origin", "ubisoft connect"
                 ]
             ) && !directGamingSignal
-            let gamingRecentlyActive = now.timeIntervalSince(record.lastSeen) <= 90
             let gamingProcessStillRunning = record.sortedProcesses.contains {
+                guard contains($0.name.lowercased(), gamingTerms) else {
+                    return false
+                }
                 guard let running = NSRunningApplication(
                     processIdentifier: pid_t($0.pid)
                 ) else { return false }
@@ -214,16 +220,18 @@ enum UsageProfileDetector {
             }
             // Unknown game titles still count when their own process is live;
             // launcher-only records remain excluded.
-            let gamingSignal = directGamingSignal
-                || (gamingProcessStillRunning && !gamingLauncherOnly)
-            let gamingIsLive = record.processes == nil
-                ? gamingRecentlyActive
-                : gamingProcessStillRunning
+            // AppEnergyRecord keeps recently observed process names for
+            // attribution. Those names must not be treated as live evidence:
+            // a game can have exited while its record is still within the
+            // profile look-back window. Require a matching running process
+            // for every gaming signal (including direct game/runtime names).
+            let gamingSignal = gamingProcessStillRunning
+                && (directGamingSignal || !gamingLauncherOnly)
 
             add(
                 .gaming,
                 weight: weight,
-                when: gamingSignal && !gamingLauncherOnly && gamingIsLive,
+                when: gamingSignal && !gamingLauncherOnly,
                 to: &scores
             )
 
@@ -240,10 +248,28 @@ enum UsageProfileDetector {
                 ),
                 to: &scores
             )
+
+            if DebugLogger.isEnabled {
+                let matched = scores
+                    .filter { $0.value > 0 }
+                    .map { "\($0.key.rawValue)=\(String(format: "%.2f", $0.value))" }
+                    .sorted()
+                    .joined(separator: ",")
+                DebugLogger.log(
+                    "profile candidate app=\(record.name) "
+                    + "bundle=\(record.bundleIdentifier ?? "-") "
+                    + "running=[\(runningProcessNames.joined(separator: ","))] "
+                    + "gamingProcessRunning=\(gamingProcessStillRunning) "
+                    + "scores=[\(matched)]"
+                )
+            }
         }
 
         let ranked = scores.sorted { $0.value > $1.value }
         guard let winner = ranked.first else {
+            if DebugLogger.isEnabled {
+                DebugLogger.log("profile result kind=mixed confidence=0.000 (no matching signals)")
+            }
             return UsageProfileDetection(kind: .mixed, confidence: 0.25)
         }
 
@@ -251,7 +277,20 @@ enum UsageProfileDetector {
         let confidence = min(1, winner.value / total)
 
         if confidence < 0.42 {
+            if DebugLogger.isEnabled {
+                DebugLogger.log(
+                    "profile result kind=mixed confidence="
+                    + String(format: "%.3f", confidence)
+                )
+            }
             return UsageProfileDetection(kind: .mixed, confidence: confidence)
+        }
+
+        if DebugLogger.isEnabled {
+            DebugLogger.log(
+                "profile result kind=\(winner.key.rawValue) confidence="
+                + String(format: "%.3f", confidence)
+            )
         }
 
         return UsageProfileDetection(kind: winner.key, confidence: confidence)
