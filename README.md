@@ -1,4 +1,6 @@
-# BUS – Battery Usage Score
+# BUS – Battery Usage Score 1.1.4
+
+Aktuelle Version: **1.1.4 (Build 74)**.
 
 Eine native macOS-Menüleisten-App zur lokalen Analyse des geschätzten Batterieverbrauchs pro App.
 
@@ -907,19 +909,15 @@ Version 1.0.0, Build 69.
   konservative, segmentierte Rückfallkurve. Die Ladeansicht zeigt Anzahl und
   Vertrauensstufe der lokalen Lernwerte an.
 
-## BUS 1.1.0 – Rollierende persönliche Vergleichsprognose
+## BUS 1.1.4 – Gaming-Erkennung und Lernprofil
 
-Version 1.1.0, Build 70.
+Version 1.1.4, Build 74.
 
-- Im Profil **Automatisch** bildet BUS die persönliche Referenz aus
-  qualifizierten Batteriesitzungen der letzten 1 bis 30 Tage; der Standard
-  beträgt 3 Tage.
-- Laufzeit- und Ladeprognosen bleiben minutengenau und erläutern sichtbar,
-  dass sie auf vergleichbaren lokalen Sitzungen beruhen.
-- Die Einstellungen zeigen Sitzungszahl, Ladedaten und den Lernstatus an und
-  erlauben das gezielte Löschen der persönlichen Vorhersagedaten.
-- Im Menüleistenfenster lässt sich das Vergleichsprofil direkt umstellen;
-  außerdem wird die bisherige Zeit im aktuell erkannten Profil angezeigt.
+- Gaming wird nur noch erkannt, wenn ein echter Spiel-/Runtime-Prozess noch läuft.
+- Steam, Epic, Battle.net und andere Launcher zählen allein nicht mehr als Gaming.
+- Das automatische Profil gewichtet weiterhin die erlernten Profilzeiten des in den Einstellungen gewählten Zeitraums.
+- Bis mindestens drei qualifizierte lokale Sitzungen vorliegen, verwendet BUS die
+  integrierte Modell- und Profilreferenz als stabile Vergleichsbasis.
 
 ## BUS 1.1.3 – Einheitliche Leistungsbilanz
 
@@ -947,3 +945,17 @@ Version 1.1.1, Build 71.
   verbindet damit eine stabile Datenbasis mit der aktuellen Nutzungsweise.
 - Bei niedrigem Akkustand bleibt die Prozentzahl im farbigen
   Menüleistensymbol weiß und lesbar.
+
+## BUS 1.1.0 – Rollierende persönliche Vergleichsprognose
+
+Version 1.1.0, Build 70.
+
+- Im Profil **Automatisch** bildet BUS die persönliche Referenz aus
+  qualifizierten Batteriesitzungen der letzten 1 bis 30 Tage; der Standard
+  beträgt 3 Tage.
+- Laufzeit- und Ladeprognosen bleiben minutengenau und erläutern sichtbar,
+  dass sie auf vergleichbaren lokalen Sitzungen beruhen.
+- Die Einstellungen zeigen Sitzungszahl, Ladedaten und den Lernstatus an und
+  erlauben das gezielte Löschen der persönlichen Vorhersagedaten.
+- Im Menüleistenfenster lässt sich das Vergleichsprofil direkt umstellen;
+  außerdem wird die bisherige Zeit im aktuell erkannten Profil angezeigt.
