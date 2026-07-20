@@ -1,6 +1,6 @@
-# BUS – Battery Usage Score 1.1.4
+# BUS – Battery Usage Score 1.1.5
 
-Aktuelle Version: **1.1.4 (Build 74)**.
+Aktuelle Version: **1.1.5 (Build 75)**.
 
 Eine native macOS-Menüleisten-App zur lokalen Analyse des geschätzten Batterieverbrauchs pro App.
 
@@ -81,6 +81,16 @@ Die aktuelle Version als native macOS-App:
 </table>
 
 ## Aktuelle Änderungen
+
+## BUS 1.1.5 – App-Zustandslernen und Energiesparmodus
+
+Version 1.1.5, Build 75.
+
+- BUS lernt App-Verhalten jetzt zusätzlich nach Vordergrund, aktivem Hintergrund und ruhigem Hintergrund.
+- Die automatische Profilerkennung reagiert schneller auf tatsächlich beendete Gaming- oder Hochlast-Apps.
+- Laufzeitprognosen berücksichtigen den erkannten macOS-Energiesparmodus und die BUS-Energiesparmodus-Einstellung.
+- Menüleistenfenster und Einstellungen enthalten eine schnelle Auswahl für Aus, Ein und Automatisch sowie eine einstellbare Automatik-Schwelle.
+- Das Menüleistensymbol zeigt ein Blatt, sobald der Energiesparmodus in der Prognose aktiv berücksichtigt wird.
 
 ## BUS 1.1.4 – Gaming-Erkennung und Lernprofil
 

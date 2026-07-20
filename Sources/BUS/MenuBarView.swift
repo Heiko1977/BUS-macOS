@@ -159,6 +159,41 @@ struct MenuBarView: View {
             .pickerStyle(.menu)
 
             Divider()
+
+            HStack(spacing: 10) {
+                Image(systemName: "leaf.fill")
+                    .foregroundStyle(
+                        monitor.effectiveLowPowerModeIsEnabled
+                            ? .green
+                            : .secondary
+                    )
+
+                VStack(alignment: .leading, spacing: 1) {
+                    Text(l.t("lowPowerMode"))
+                        .font(.subheadline.weight(.semibold))
+                    Text(l.t(monitor.lowPowerModeStatusKey))
+                        .font(.caption)
+                        .foregroundStyle(.secondary)
+                }
+
+                Spacer()
+            }
+
+            Picker(
+                l.t("lowPowerMode"),
+                selection: Binding(
+                    get: { monitor.lowPowerModePreference },
+                    set: { monitor.updateLowPowerModePreference($0) }
+                )
+            ) {
+                ForEach(LowPowerModePreference.allCases) { preference in
+                    Text(l.t(preference.titleKey))
+                        .tag(preference)
+                }
+            }
+            .pickerStyle(.segmented)
+
+            Divider()
             Text(l.t("topConsumers")).font(.caption.bold()).foregroundStyle(.secondary)
             if monitor.sortedRecords.isEmpty {
                 Text(l.t("noData")).foregroundStyle(.secondary)

@@ -29,6 +29,8 @@ struct DashboardPresentationFrame: Equatable {
     var detectedUsageProfileConfidence: Double
     var usageProfileReferenceHours: Double?
     var usageProfileEfficiencyPercent: Double?
+    var lowPowerModeIsEnabled: Bool
+    var lowPowerModePreference: LowPowerModePreference
 
     @MainActor
     static func capture(from monitor: EnergyMonitor) -> Self {
@@ -76,7 +78,11 @@ struct DashboardPresentationFrame: Equatable {
             usageProfileReferenceHours:
                 monitor.usageProfileReferenceHours,
             usageProfileEfficiencyPercent:
-                monitor.usageProfileEfficiencyPercent
+                monitor.usageProfileEfficiencyPercent,
+            lowPowerModeIsEnabled:
+                monitor.effectiveLowPowerModeIsEnabled,
+            lowPowerModePreference:
+                monitor.lowPowerModePreference
         )
     }
 }

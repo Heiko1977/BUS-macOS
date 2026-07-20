@@ -85,6 +85,24 @@ final class EnergyMonitor: ObservableObject {
             )
         }
     }
+
+    @Published private(set) var lowPowerModePreference: LowPowerModePreference {
+        didSet {
+            UserDefaults.standard.set(
+                lowPowerModePreference.rawValue,
+                forKey: "BUS.lowPowerModePreference"
+            )
+        }
+    }
+
+    @Published private(set) var lowPowerAutomaticThresholdPercent: Int {
+        didSet {
+            UserDefaults.standard.set(
+                lowPowerAutomaticThresholdPercent,
+                forKey: "BUS.lowPowerAutomaticThresholdPercent"
+            )
+        }
+    }
     private(set) var detectedUsageProfileSnapshot:
         UsageProfileDetection
 
@@ -134,6 +152,12 @@ final class EnergyMonitor: ObservableObject {
         let lookback = Self.clampedAutomaticProfileLookbackDays(
             defaults.object(forKey: "BUS.automaticProfileLookbackDays") as? Int ?? 3
         )
+        let lowPowerPreference = LowPowerModePreference(
+            rawValue: defaults.string(forKey: "BUS.lowPowerModePreference") ?? ""
+        ) ?? .automatic
+        let lowPowerThreshold = Self.clampedLowPowerThreshold(
+            defaults.object(forKey: "BUS.lowPowerAutomaticThresholdPercent") as? Int ?? 20
+        )
 
         let initialBattery = batteryReader.read()
         let loadedSession = store.load() ?? MonitorSession.fresh(
@@ -164,6 +188,8 @@ final class EnergyMonitor: ObservableObject {
             Self.clampedManufacturerRuntimeOverride(override)
         selectedUsageProfile = selectedProfile
         automaticProfileLookbackDays = lookback
+        lowPowerModePreference = lowPowerPreference
+        lowPowerAutomaticThresholdPercent = lowPowerThreshold
         detectedUsageProfileSnapshot = UsageProfileDetector.detect(
             from: Array(initialSession.records.values)
         )
@@ -342,6 +368,50 @@ final class EnergyMonitor: ObservableObject {
         measuredAdapterInputWatts == nil
     }
 
+    var macOSLowPowerModeIsEnabled: Bool {
+        ProcessInfo.processInfo.isLowPowerModeEnabled
+    }
+
+    var effectiveLowPowerModeIsEnabled: Bool {
+        if macOSLowPowerModeIsEnabled {
+            return true
+        }
+        switch lowPowerModePreference {
+        case .off:
+            return false
+        case .on:
+            return true
+        case .automatic:
+            guard let percent = battery?.percent else { return false }
+            return percent <= Double(lowPowerAutomaticThresholdPercent)
+        }
+    }
+
+    var lowPowerModeStatusKey: String {
+        if macOSLowPowerModeIsEnabled {
+            return "lowPowerModeSystemActive"
+        }
+        switch lowPowerModePreference {
+        case .off:
+            return "lowPowerModeOffStatus"
+        case .on:
+            return "lowPowerModeOnStatus"
+        case .automatic:
+            if effectiveLowPowerModeIsEnabled {
+                return "lowPowerModeAutomaticActive"
+            }
+            return "lowPowerModeAutomaticWaiting"
+        }
+    }
+
+    private var lowPowerRuntimeMultiplier: Double {
+        effectiveLowPowerModeIsEnabled ? 1.10 : 1.0
+    }
+
+    private func adjustedRuntimeHours(_ hours: Double) -> Double {
+        hours * lowPowerRuntimeMultiplier
+    }
+
     var powerMeasurementQualityKey: String {
         if measuredAdapterInputWatts != nil {
             return "hardwareMeasured"
@@ -432,13 +502,17 @@ final class EnergyMonitor: ObservableObject {
               let percent = battery?.percent else {
             return nil
         }
-        return reference * max(0, min(100, percent)) / 100
+        return adjustedRuntimeHours(reference)
+            * max(0, min(100, percent)) / 100
     }
 
     var estimatedRuntimeAtFullChargeHours: Double? {
-        personalRuntimeSummary.medianHours
+        guard let reference = personalRuntimeSummary.medianHours
             ?? usageProfileReferenceHours
-            ?? manufacturerReferenceHours
+            ?? manufacturerReferenceHours else {
+            return nil
+        }
+        return adjustedRuntimeHours(reference)
     }
 
     private var personalAveragePowerWatts: Double? {
@@ -637,6 +711,12 @@ final class EnergyMonitor: ObservableObject {
     /// of the shorter automatic-profile comparison window.
     var chargeLearningSampleCount: Int { chargeLearningSamples.count }
 
+    var learnedAppActivitySampleCount: Int {
+        runtimeStatistics.appActivityUsage.values.reduce(0) {
+            $0 + $1.samples.count
+        }
+    }
+
     var personalPredictionConfidenceKey: String {
         switch predictionSessionCount {
         case 12...:
@@ -692,11 +772,12 @@ final class EnergyMonitor: ObservableObject {
     }
 
     var usageProfileReferenceHours: Double? {
-        referenceHours(
+        guard let hours = referenceHours(
             for: selectedUsageProfile == .automatic
                 ? .automatic
                 : activeUsageProfile
-        )
+        ) else { return nil }
+        return adjustedRuntimeHours(hours)
     }
 
     var usageProfileEfficiencyPercent: Double? {
@@ -761,7 +842,7 @@ final class EnergyMonitor: ObservableObject {
             let batteryWh = detectedMaximumBatteryWattHours
                 ?? deviceProfile.batteryWattHours
             if let batteryWh, batteryWh > 0 {
-                return batteryWh / power
+                return adjustedRuntimeHours(batteryWh / power)
             }
         }
 
@@ -772,7 +853,7 @@ final class EnergyMonitor: ObservableObject {
         guard elapsedHours >= 0.05, batteryDropPercent >= 0.5 else {
             return nil
         }
-        return elapsedHours * 100 / batteryDropPercent
+        return adjustedRuntimeHours(elapsedHours * 100 / batteryDropPercent)
     }
 
     private var activeSamplingSeconds: TimeInterval {
@@ -1002,6 +1083,17 @@ final class EnergyMonitor: ObservableObject {
         automaticProfileLookbackDays = sanitized
     }
 
+    func updateLowPowerModePreference(_ preference: LowPowerModePreference) {
+        guard preference != lowPowerModePreference else { return }
+        lowPowerModePreference = preference
+    }
+
+    func updateLowPowerAutomaticThresholdPercent(_ value: Int) {
+        let sanitized = Self.clampedLowPowerThreshold(value)
+        guard sanitized != lowPowerAutomaticThresholdPercent else { return }
+        lowPowerAutomaticThresholdPercent = sanitized
+    }
+
     private static func clampedSampleInterval(_ value: Double) -> Double {
         min(max(value, 2), 60)
     }
@@ -1016,6 +1108,10 @@ final class EnergyMonitor: ObservableObject {
         _ value: Int
     ) -> Int {
         min(max(value, 1), 30)
+    }
+
+    private static func clampedLowPowerThreshold(_ value: Int) -> Int {
+        min(max(value, 5), 100)
     }
 
     func toggleRunning() {
@@ -1244,6 +1340,12 @@ final class EnergyMonitor: ObservableObject {
             appRecord.score += delta.score
             appRecord.attributedMilliwattHours += attributedEnergy
             appRecord.lastSeen = .now
+            appRecord.activityStates = updatedActivityStates(
+                appRecord.activityStates,
+                state: delta.activityState,
+                delta: delta,
+                attributedEnergy: attributedEnergy
+            )
 
             var processRecords = appRecord.processes ?? [:]
             var processRecord = processRecords[delta.process.key]
@@ -1254,6 +1356,7 @@ final class EnergyMonitor: ObservableObject {
                     pid: delta.process.pid
                 )
             processRecord.pid = delta.process.pid
+            processRecord.activityState = delta.activityState
             processRecord.cpuSeconds += delta.cpuSeconds
             processRecord.diskReadBytes &+= delta.diskReadBytes
             processRecord.diskWriteBytes &+= delta.diskWriteBytes
@@ -1277,6 +1380,14 @@ final class EnergyMonitor: ObservableObject {
 
             appRecord.processes = processRecords
             session.records[appKey] = appRecord
+
+            learnAppActivity(
+                appKey: appKey,
+                app: delta.app,
+                delta: delta,
+                attributedEnergy: attributedEnergy,
+                at: newBattery?.date ?? .now
+            )
         }
 
         let profileBeforeUpdate = activeUsageProfile
@@ -1335,6 +1446,78 @@ final class EnergyMonitor: ObservableObject {
             store.save(session)
             runtimeStore.save(runtimeStatistics)
             chargeLearningStore.save(chargeLearningSamples)
+        }
+    }
+
+    private func updatedActivityStates(
+        _ existing: [AppActivityState: AppActivityStateRecord]?,
+        state: AppActivityState,
+        delta: ProcessDelta,
+        attributedEnergy: Double
+    ) -> [AppActivityState: AppActivityStateRecord] {
+        var states = existing ?? [:]
+        var record = states[state] ?? AppActivityStateRecord()
+        record.samples += 1
+        record.activeSeconds += sampleInterval
+        record.cpuSeconds += delta.cpuSeconds
+        record.diskReadBytes &+= delta.diskReadBytes
+        record.diskWriteBytes &+= delta.diskWriteBytes
+        record.wakeups &+= delta.wakeups
+        record.score += delta.score
+        record.attributedMilliwattHours += attributedEnergy
+        record.lastSeen = .now
+        states[state] = record
+        return states
+    }
+
+    private func learnAppActivity(
+        appKey: String,
+        app: AppIdentity,
+        delta: ProcessDelta,
+        attributedEnergy: Double,
+        at date: Date
+    ) {
+        guard delta.score > 0 || attributedEnergy > 0 else { return }
+
+        var usage = runtimeStatistics.appActivityUsage[appKey]
+            ?? LearnedAppActivityUsage(
+                name: app.name,
+                bundleIdentifier: app.bundleIdentifier,
+                applicationPath: app.applicationPath,
+                samples: []
+            )
+        usage.name = app.name
+        usage.bundleIdentifier = app.bundleIdentifier
+        usage.applicationPath = usage.applicationPath ?? app.applicationPath
+        usage.append(
+            AppActivityUsageSample(
+                id: UUID(),
+                date: date,
+                state: delta.activityState,
+                duration: sampleInterval,
+                cpuSeconds: delta.cpuSeconds,
+                diskReadBytes: delta.diskReadBytes,
+                diskWriteBytes: delta.diskWriteBytes,
+                wakeups: delta.wakeups,
+                score: delta.score,
+                attributedMilliwattHours: attributedEnergy
+            )
+        )
+        usage.prune(
+            before: date.addingTimeInterval(-30 * 24 * 3600),
+            maximumSamples: 720
+        )
+        runtimeStatistics.appActivityUsage[appKey] = usage
+
+        if runtimeStatistics.appActivityUsage.count > 150 {
+            let keep = runtimeStatistics.appActivityUsage.sorted {
+                ($0.value.samples.last?.date ?? .distantPast)
+                    > ($1.value.samples.last?.date ?? .distantPast)
+            }
+            .prefix(150)
+            runtimeStatistics.appActivityUsage = Dictionary(
+                uniqueKeysWithValues: keep.map { ($0.key, $0.value) }
+            )
         }
     }
 

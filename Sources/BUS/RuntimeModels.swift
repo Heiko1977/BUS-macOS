@@ -118,28 +118,33 @@ struct RuntimeStatistics: Codable {
     var active: ActiveRuntimeSession?
     var profileUsage: [ProfileUsageRecord]
     var activeProfileUsage: ActiveProfileUsage?
+    var appActivityUsage: [String: LearnedAppActivityUsage]
 
     static let empty = RuntimeStatistics(
         sessions: [],
         active: nil,
         profileUsage: [],
-        activeProfileUsage: nil
+        activeProfileUsage: nil,
+        appActivityUsage: [:]
     )
 
     private enum CodingKeys: String, CodingKey {
         case sessions, active, profileUsage, activeProfileUsage
+        case appActivityUsage
     }
 
     init(
         sessions: [RuntimeSessionRecord],
         active: ActiveRuntimeSession?,
         profileUsage: [ProfileUsageRecord] = [],
-        activeProfileUsage: ActiveProfileUsage? = nil
+        activeProfileUsage: ActiveProfileUsage? = nil,
+        appActivityUsage: [String: LearnedAppActivityUsage] = [:]
     ) {
         self.sessions = sessions
         self.active = active
         self.profileUsage = profileUsage
         self.activeProfileUsage = activeProfileUsage
+        self.appActivityUsage = appActivityUsage
     }
 
     init(from decoder: Decoder) throws {
@@ -160,6 +165,61 @@ struct RuntimeStatistics: Codable {
             ActiveProfileUsage.self,
             forKey: .activeProfileUsage
         )
+        appActivityUsage = try container.decodeIfPresent(
+            [String: LearnedAppActivityUsage].self,
+            forKey: .appActivityUsage
+        ) ?? [:]
+    }
+}
+
+struct AppActivityUsageSample: Identifiable, Codable, Hashable {
+    let id: UUID
+    let date: Date
+    let state: AppActivityState
+    let duration: TimeInterval
+    let cpuSeconds: Double
+    let diskReadBytes: UInt64
+    let diskWriteBytes: UInt64
+    let wakeups: UInt64
+    let score: Double
+    let attributedMilliwattHours: Double
+
+    var diskBytes: UInt64 { diskReadBytes &+ diskWriteBytes }
+}
+
+struct LearnedAppActivityUsage: Codable, Hashable {
+    var name: String
+    var bundleIdentifier: String?
+    var applicationPath: String?
+    var samples: [AppActivityUsageSample]
+
+    mutating func append(_ sample: AppActivityUsageSample) {
+        samples.append(sample)
+    }
+
+    mutating func prune(before cutoff: Date, maximumSamples: Int) {
+        samples.removeAll { $0.date < cutoff }
+        if samples.count > maximumSamples {
+            samples = Array(samples.suffix(maximumSamples))
+        }
+    }
+
+    func summary(for state: AppActivityState) -> AppActivityStateRecord {
+        samples.filter { $0.state == state }.reduce(
+            AppActivityStateRecord()
+        ) { partial, sample in
+            var record = partial
+            record.samples += 1
+            record.activeSeconds += sample.duration
+            record.cpuSeconds += sample.cpuSeconds
+            record.diskReadBytes &+= sample.diskReadBytes
+            record.diskWriteBytes &+= sample.diskWriteBytes
+            record.wakeups &+= sample.wakeups
+            record.score += sample.score
+            record.attributedMilliwattHours += sample.attributedMilliwattHours
+            record.lastSeen = max(record.lastSeen, sample.date)
+            return record
+        }
     }
 }
 

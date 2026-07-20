@@ -93,7 +93,7 @@ enum UsageProfileDetector {
     static func detect(from records: [AppEnergyRecord]) -> UsageProfileDetection {
         let now = Date.now
         let active = records.filter {
-            now.timeIntervalSince($0.lastSeen) <= 10 * 60
+            now.timeIntervalSince($0.lastSeen) <= 3 * 60
         }
 
         guard !active.isEmpty else {
@@ -111,7 +111,13 @@ enum UsageProfileDetector {
             .joined(separator: " ")
             .lowercased()
 
-            let weight = max(0.1, record.score)
+            let age = max(0, now.timeIntervalSince(record.lastSeen))
+            let recency = max(0.2, 1 - age / (3 * 60))
+            let foregroundSeen = record.activityStates?[.foreground]?.lastSeen
+            let foregroundBoost = foregroundSeen.map {
+                now.timeIntervalSince($0) <= 30 ? 1.35 : 1.0
+            } ?? 1.0
+            let weight = max(0.1, record.score) * recency * foregroundBoost
 
             add(
                 .browser,

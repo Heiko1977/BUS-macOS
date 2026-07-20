@@ -1,5 +1,42 @@
 import Foundation
 
+enum AppActivityState: String, CaseIterable, Codable, Hashable {
+    case foreground
+    case backgroundActive
+    case backgroundIdle
+}
+
+enum LowPowerModePreference: String, CaseIterable, Codable, Identifiable {
+    case off
+    case on
+    case automatic
+
+    var id: String { rawValue }
+
+    var titleKey: String {
+        "lowPowerMode.\(rawValue)"
+    }
+}
+
+struct AppActivityStateRecord: Codable, Hashable {
+    var samples: Int = 0
+    var activeSeconds: Double = 0
+    var cpuSeconds: Double = 0
+    var diskReadBytes: UInt64 = 0
+    var diskWriteBytes: UInt64 = 0
+    var wakeups: UInt64 = 0
+    var score: Double = 0
+    var attributedMilliwattHours: Double = 0
+    var lastSeen: Date = .now
+
+    var averagePowerWatts: Double? {
+        guard activeSeconds > 0, attributedMilliwattHours > 0 else {
+            return nil
+        }
+        return attributedMilliwattHours / 1000 / (activeSeconds / 3600)
+    }
+}
+
 struct ProcessEnergyRecord: Identifiable, Codable, Hashable {
     let key: String
     var id: String { key }
@@ -13,6 +50,7 @@ struct ProcessEnergyRecord: Identifiable, Codable, Hashable {
     var score: Double = 0
     var attributedMilliwattHours: Double = 0
     var lastSeen: Date = .now
+    var activityState: AppActivityState? = nil
 
     var diskBytes: UInt64 { diskReadBytes &+ diskWriteBytes }
 }
@@ -30,6 +68,7 @@ struct AppEnergyRecord: Identifiable, Codable, Hashable {
     var attributedMilliwattHours: Double = 0
     var lastSeen: Date = .now
     var processes: [String: ProcessEnergyRecord]? = nil
+    var activityStates: [AppActivityState: AppActivityStateRecord]? = nil
 
     var diskBytes: UInt64 { diskReadBytes &+ diskWriteBytes }
 

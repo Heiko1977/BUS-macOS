@@ -26,12 +26,27 @@ struct ProcessCounters {
 struct ProcessDelta {
     let app: AppIdentity
     let process: ProcessIdentity
+    let activityState: AppActivityState
     let cpuSeconds: Double
     let diskReadBytes: UInt64
     let diskWriteBytes: UInt64
     let wakeups: UInt64
 
     var score: Double {
+        Self.score(
+            cpuSeconds: cpuSeconds,
+            diskReadBytes: diskReadBytes,
+            diskWriteBytes: diskWriteBytes,
+            wakeups: wakeups
+        )
+    }
+
+    static func score(
+        cpuSeconds: Double,
+        diskReadBytes: UInt64,
+        diskWriteBytes: UInt64,
+        wakeups: UInt64
+    ) -> Double {
         let diskGB = Double(diskReadBytes &+ diskWriteBytes) / 1_000_000_000.0
         return max(0, cpuSeconds + diskGB * 0.35 + Double(wakeups) * 0.00045)
     }
@@ -41,6 +56,14 @@ final class ProcessSampler {
     private var previous: [Int32: ProcessCounters] = [:]
 
     func sample() -> [ProcessDelta] {
+        let frontmost = NSWorkspace.shared.frontmostApplication
+        let frontmostCanonical = frontmost.map {
+            appIdentity(for: $0, fallbackName: $0.localizedName ?? "")
+        }
+        let frontmostKey = frontmostCanonical.map {
+            $0.bundleIdentifier ?? $0.name
+        }
+
         var pids = [Int32](repeating: 0, count: 8192)
         let count = pids.withUnsafeMutableBufferPointer {
             Int(bs_list_all_pids($0.baseAddress, Int32($0.count)))
@@ -71,10 +94,23 @@ final class ProcessSampler {
                 name: processName,
                 bundleIdentifier: running?.bundleIdentifier
             )
+            let app = appIdentity(for: running, fallbackName: processName)
+            let appKey = app.bundleIdentifier ?? app.name
+            let score = ProcessDelta.score(
+                cpuSeconds: secondsDelta(counters.cpuNanoseconds, old.cpuNanoseconds),
+                diskReadBytes: safeDelta(counters.diskReadBytes, old.diskReadBytes),
+                diskWriteBytes: safeDelta(counters.diskWriteBytes, old.diskWriteBytes),
+                wakeups: safeDelta(counters.wakeups, old.wakeups)
+            )
 
             let delta = ProcessDelta(
-                app: appIdentity(for: running, fallbackName: processName),
+                app: app,
                 process: process,
+                activityState: activityState(
+                    appKey: appKey,
+                    frontmostKey: frontmostKey,
+                    score: score
+                ),
                 cpuSeconds: secondsDelta(counters.cpuNanoseconds, old.cpuNanoseconds),
                 diskReadBytes: safeDelta(counters.diskReadBytes, old.diskReadBytes),
                 diskWriteBytes: safeDelta(counters.diskWriteBytes, old.diskWriteBytes),
@@ -85,6 +121,17 @@ final class ProcessSampler {
 
         previous = current
         return deltas
+    }
+
+    private func activityState(
+        appKey: String,
+        frontmostKey: String?,
+        score: Double
+    ) -> AppActivityState {
+        if let frontmostKey, appKey == frontmostKey {
+            return .foreground
+        }
+        return score >= 0.08 ? .backgroundActive : .backgroundIdle
     }
 
     private func appIdentity(for running: NSRunningApplication?, fallbackName: String) -> AppIdentity {

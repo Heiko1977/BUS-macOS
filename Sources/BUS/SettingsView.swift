@@ -165,6 +165,10 @@ struct BUSSettingsView: View {
                     Text("\(monitor.chargeLearningSampleCount)")
                         .monospacedDigit()
                 }
+                LabeledContent(l.t("appActivityLearningData")) {
+                    Text("\(monitor.learnedAppActivitySampleCount)")
+                        .monospacedDigit()
+                }
                 LabeledContent(l.t("predictionStatus")) {
                     Text(l.t(monitor.personalPredictionConfidenceKey))
                 }
@@ -197,6 +201,45 @@ struct BUSSettingsView: View {
                 Toggle(l.t("autoReset"), isOn: $monitor.resetAfterChargingEnds)
                 Toggle(l.t("autoResetAtFull"), isOn: $monitor.resetAfterFullCharge)
                     .disabled(!monitor.resetAfterChargingEnds)
+            }
+
+            Section(l.t("lowPowerMode")) {
+                Picker(
+                    l.t("lowPowerMode"),
+                    selection: Binding(
+                        get: { monitor.lowPowerModePreference },
+                        set: { monitor.updateLowPowerModePreference($0) }
+                    )
+                ) {
+                    ForEach(LowPowerModePreference.allCases) { preference in
+                        Text(l.t(preference.titleKey))
+                            .tag(preference)
+                    }
+                }
+
+                Stepper(
+                    value: Binding(
+                        get: { monitor.lowPowerAutomaticThresholdPercent },
+                        set: { monitor.updateLowPowerAutomaticThresholdPercent($0) }
+                    ),
+                    in: 5...100
+                ) {
+                    HStack {
+                        Text(l.t("lowPowerModeThreshold"))
+                        Spacer()
+                        Text("\(monitor.lowPowerAutomaticThresholdPercent) %")
+                            .monospacedDigit()
+                    }
+                }
+                .disabled(monitor.lowPowerModePreference != .automatic)
+
+                LabeledContent(l.t("lowPowerModeStatus")) {
+                    Text(l.t(monitor.lowPowerModeStatusKey))
+                }
+
+                Text(l.t("lowPowerModeHelp"))
+                    .font(.caption)
+                    .foregroundStyle(.secondary)
             }
 
             Section(l.t("deviceReference")) {

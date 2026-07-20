@@ -67,6 +67,7 @@ private struct MenuBarStatusLabel: View {
         let statusImage = MenuBarBatteryImageRenderer.image(
             percent: frame.batteryPercent,
             isCharging: frame.isChargingSession,
+            showsLowPowerMode: frame.lowPowerModeIsEnabled,
             isColorized: colorizeBatteryIcon,
             showsPercentInside: mode == .iconWithPercent,
             remainingTimeText: remainingText
@@ -101,6 +102,7 @@ private enum MenuBarBatteryImageRenderer {
     static func image(
         percent: Double?,
         isCharging: Bool,
+        showsLowPowerMode: Bool,
         isColorized: Bool,
         showsPercentInside: Bool,
         remainingTimeText: String?
@@ -109,8 +111,11 @@ private enum MenuBarBatteryImageRenderer {
         let timeWidth = remainingTimeText.map {
             ceil(($0 as NSString).size(withAttributes: timeAttributes).width)
         } ?? 0
+        let lowPowerWidth: CGFloat = showsLowPowerMode ? 11 : 0
         let pointSize = NSSize(
-            width: 27 + (remainingTimeText == nil ? 0 : 4 + timeWidth),
+            width: 27
+                + lowPowerWidth
+                + (remainingTimeText == nil ? 0 : 4 + timeWidth),
             height: 16
         )
         let image = NSImage(size: pointSize)
@@ -128,10 +133,15 @@ private enum MenuBarBatteryImageRenderer {
             isColorized: isColorized,
             showsPercentInside: showsPercentInside
         )
+        var nextX: CGFloat = 27
+        if showsLowPowerMode {
+            drawLowPowerGlyph(in: CGRect(x: 26, y: 2.2, width: 10, height: 11.6))
+            nextX = 37
+        }
         if let remainingTimeText {
             remainingTimeText.draw(
                 with: CGRect(
-                    x: 31,
+                    x: nextX + 4,
                     y: 1.75,
                     width: timeWidth,
                     height: 13
@@ -153,6 +163,26 @@ private enum MenuBarBatteryImageRenderer {
             ),
             .foregroundColor: NSColor.labelColor
         ]
+    }
+
+    private static func drawLowPowerGlyph(in rect: CGRect) {
+        let configuration = NSImage.SymbolConfiguration(
+            pointSize: 9,
+            weight: .semibold
+        )
+        .applying(NSImage.SymbolConfiguration(paletteColors: [.systemGreen]))
+        let symbol = NSImage(
+            systemSymbolName: "leaf.fill",
+            accessibilityDescription: nil
+        )?.withSymbolConfiguration(configuration)
+        symbol?.draw(
+            in: rect,
+            from: .zero,
+            operation: .sourceOver,
+            fraction: 1,
+            respectFlipped: true,
+            hints: nil
+        )
     }
 
     private static func draw(

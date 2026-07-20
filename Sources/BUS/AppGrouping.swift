@@ -158,6 +158,10 @@ enum AppGrouping {
             target.score += oldApp.score
             target.attributedMilliwattHours += oldApp.attributedMilliwattHours
             target.lastSeen = max(target.lastSeen, oldApp.lastSeen)
+            target.activityStates = mergeActivityStates(
+                target.activityStates,
+                oldApp.activityStates
+            )
             if target.applicationPath == nil { target.applicationPath = canonical.applicationPath }
 
             var processes = target.processes ?? [:]
@@ -189,6 +193,28 @@ enum AppGrouping {
 
         normalized.records = grouped
         return normalized
+    }
+
+    private static func mergeActivityStates(
+        _ existing: [AppActivityState: AppActivityStateRecord]?,
+        _ incoming: [AppActivityState: AppActivityStateRecord]?
+    ) -> [AppActivityState: AppActivityStateRecord]? {
+        guard let incoming, !incoming.isEmpty else { return existing }
+        var merged = existing ?? [:]
+        for (state, record) in incoming {
+            var target = merged[state] ?? AppActivityStateRecord()
+            target.samples += record.samples
+            target.activeSeconds += record.activeSeconds
+            target.cpuSeconds += record.cpuSeconds
+            target.diskReadBytes &+= record.diskReadBytes
+            target.diskWriteBytes &+= record.diskWriteBytes
+            target.wakeups &+= record.wakeups
+            target.score += record.score
+            target.attributedMilliwattHours += record.attributedMilliwattHours
+            target.lastSeen = max(target.lastSeen, record.lastSeen)
+            merged[state] = target
+        }
+        return merged
     }
 
     private static func merge(
