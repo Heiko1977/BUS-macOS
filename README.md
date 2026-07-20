@@ -6,9 +6,61 @@ Eine native macOS-Menüleisten-App zur lokalen Analyse des geschätzten Batterie
 
 **BUS – Battery Usage Score von Heiko Große & ChatGPT © 2026**
 
-> **Changelog-Regel:** Versionsabschnitte werden chronologisch aufsteigend
-> gepflegt. Neue Releases werden am Ende der Versionshistorie ergänzt; Version,
+> **Changelog-Regel:** Die neuesten Versionsabschnitte stehen immer zuerst.
+> Neue Releases werden direkt unter „Aktuelle Änderungen“ ergänzt; Version,
 > Build und Überschrift müssen dabei immer dieselbe Release-Version nennen.
+
+## Aktuelle Änderungen
+
+## BUS 1.1.4 – Gaming-Erkennung und Lernprofil
+
+Version 1.1.4, Build 74.
+
+- Gaming wird nur noch erkannt, wenn ein echter Spiel-/Runtime-Prozess noch läuft.
+- Steam, Epic, Battle.net und andere Launcher zählen allein nicht mehr als Gaming.
+- Das automatische Profil gewichtet weiterhin die erlernten Profilzeiten des in den Einstellungen gewählten Zeitraums.
+- Bis mindestens drei qualifizierte lokale Sitzungen vorliegen, verwendet BUS die integrierte Modell- und Profilreferenz als stabile Vergleichsbasis.
+
+## BUS 1.1.3 – Einheitliche Leistungsbilanz
+
+Version 1.1.3, Build 73.
+
+- Übersicht und Verlauf verwenden dieselbe Lückenbehandlung der Leistungsbilanz.
+- Zustandsgrenzen für Standby/Offline bleiben auch in der kompakten Übersicht beim Downsampling erhalten.
+
+## BUS 1.1.2 – Leistungsbilanz ohne Lückensprünge
+
+Version 1.1.2, Build 72.
+
+- Lange Lücken im Leistungsverlauf werden nicht mehr diagonal verbunden.
+- Nach einem nachweisbaren Neustart/Ausschalten zeigt die Lücke 0 W.
+- Bei Schlaf oder unterbrochener Erfassung wird der lokale Energieverlust des Macs als Standby-Schätzung verwendet; ohne Energiewert greift eine konservative, kapazitätsabhängige Schätzung.
+
+## BUS 1.1.1 – Persönlicher Profilmix
+
+Version 1.1.1, Build 71.
+
+- BUS lernt die Referenz jedes Nutzungsprofils getrennt aus bis zu 30 Tagen lokaler Batteriesitzungen.
+- Der einstellbare Automatikzeitraum bestimmt nur die Gewichtung der tatsächlich verwendeten Profile.
+- Bei niedrigem Akkustand bleibt die Prozentzahl im farbigen Menüleistensymbol weiß und lesbar.
+
+## BUS 1.1.0 – Rollierende persönliche Vergleichsprognose
+
+Version 1.1.0, Build 70.
+
+- Im Profil **Automatisch** bildet BUS die persönliche Referenz aus qualifizierten Batteriesitzungen der letzten 1 bis 30 Tage; der Standard beträgt 3 Tage.
+- Laufzeit- und Ladeprognosen bleiben minutengenau und beruhen auf vergleichbaren lokalen Sitzungen.
+- Einstellungen und Menüleistenfenster zeigen Lernstatus, Vergleichsprofil und aktuelle Profilzeit.
+
+## BUS 1.0.0 – Lokal lernende Ladeprognose
+
+Version 1.0.0, Build 69.
+
+- Ladezeiten werden pro Akkubereich aus lokalen Ladevorgängen gelernt.
+- Lernwerte werden je Mac-Modell und Netzteilklasse getrennt gespeichert.
+- Unterbrochene Ladevorgänge sowie Standby-/Ruhezustandslücken werden verworfen.
+
+## Ältere Versionen
 
 ## App-Vorschau
 
@@ -897,69 +949,3 @@ Version 0.9.5, Build 50. Die Dashboard-Detailkarten wurden kompakter und
 gleichmäßiger ausgerichtet, damit `Persönliche Akkulaufzeit`,
 `Score-Aufschlüsselung` und `Top-Verbraucher` als ruhigeres Kachelraster
 erscheinen. Die Ausführungsansicht bleibt dabei weiterhin detailreicher.
-
-## BUS 1.0.0 – Lokal lernende Ladeprognose
-
-Version 1.0.0, Build 69.
-
-- Ladezeiten werden pro Akkubereich (0–50, 50–80, 80–90, 90–95 und 95–100 %)
-  aus lokalen Ladevorgängen gelernt.
-- Die Lernwerte werden je Mac-Modell und Netzteilklasse getrennt gespeichert;
-  Messungen mit aktivem und ausgeschaltetem Display werden ebenfalls nicht
-  vermischt.
-- Unterbrochene Ladevorgänge sowie Standby-/Ruhezustandslücken werden bewusst
-  verworfen, damit sie die Vorhersage nicht verfälschen.
-- Bis ausreichend vergleichbare Messfenster vorliegen, verwendet BUS eine
-  konservative, segmentierte Rückfallkurve. Die Ladeansicht zeigt Anzahl und
-  Vertrauensstufe der lokalen Lernwerte an.
-
-## BUS 1.1.0 – Rollierende persönliche Vergleichsprognose
-
-Version 1.1.0, Build 70.
-
-- Im Profil **Automatisch** bildet BUS die persönliche Referenz aus
-  qualifizierten Batteriesitzungen der letzten 1 bis 30 Tage; der Standard
-  beträgt 3 Tage.
-- Laufzeit- und Ladeprognosen bleiben minutengenau und erläutern sichtbar,
-  dass sie auf vergleichbaren lokalen Sitzungen beruhen.
-- Die Einstellungen zeigen Sitzungszahl, Ladedaten und den Lernstatus an und
-  erlauben das gezielte Löschen der persönlichen Vorhersagedaten.
-- Im Menüleistenfenster lässt sich das Vergleichsprofil direkt umstellen;
-  außerdem wird die bisherige Zeit im aktuell erkannten Profil angezeigt.
-
-## BUS 1.1.1 – Persönlicher Profilmix
-
-Version 1.1.1, Build 71.
-
-- BUS lernt die Referenz jedes Nutzungsprofils getrennt aus bis zu 30 Tagen
-  lokaler Batteriesitzungen.
-- Der einstellbare Automatikzeitraum (standardmäßig 3 Tage) bestimmt nur die
-  Gewichtung der tatsächlich verwendeten Profile. Die automatische Prognose
-  verbindet damit eine stabile Datenbasis mit der aktuellen Nutzungsweise.
-- Bei niedrigem Akkustand bleibt die Prozentzahl im farbigen
-  Menüleistensymbol weiß und lesbar.
-
-## BUS 1.1.2 – Leistungsbilanz ohne Lückensprünge
-
-Version 1.1.2, Build 72.
-
-- Lange Lücken im Leistungsverlauf werden nicht mehr diagonal verbunden.
-- Nach einem nachweisbaren Neustart/Ausschalten zeigt die Lücke 0 W.
-- Bei Schlaf oder unterbrochener Erfassung wird der lokale Energieverlust des Macs als Standby-Schätzung verwendet; ohne Energiewert greift eine konservative, kapazitätsabhängige Schätzung.
-
-## BUS 1.1.3 – Einheitliche Leistungsbilanz
-
-Version 1.1.3, Build 73.
-
-- Übersicht und Verlauf verwenden dieselbe Lückenbehandlung der Leistungsbilanz.
-- Zustandsgrenzen für Standby/Offline bleiben auch in der kompakten Übersicht beim Downsampling erhalten.
-
-## BUS 1.1.4 – Gaming-Erkennung und Lernprofil
-
-Version 1.1.4, Build 74.
-
-- Gaming wird nur noch erkannt, wenn ein echter Spiel-/Runtime-Prozess noch läuft.
-- Steam, Epic, Battle.net und andere Launcher zählen allein nicht mehr als Gaming.
-- Das automatische Profil gewichtet weiterhin die erlernten Profilzeiten des in den Einstellungen gewählten Zeitraums.
-- Bis mindestens drei qualifizierte lokale Sitzungen vorliegen, verwendet BUS die
-  integrierte Modell- und Profilreferenz als stabile Vergleichsbasis.
