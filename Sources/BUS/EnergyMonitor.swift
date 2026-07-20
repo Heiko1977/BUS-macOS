@@ -130,6 +130,10 @@ final class EnergyMonitor: ObservableObject {
     private var chargeLearningAnchor: BatterySnapshot?
     private var activeProfileStartedAt: Date
     private var saveCounter = 0
+    private var cachedMacOSLowPowerModeIsEnabled =
+        ProcessInfo.processInfo.isLowPowerModeEnabled
+    private var lowPowerModeRefreshIsInFlight = false
+    private var lastLowPowerModeRefresh = Date.distantPast
     private static let lowPowerModeRequestURL = URL(
         fileURLWithPath:
             "/Library/Application Support/BUS/lowpowermode.request"
@@ -226,6 +230,7 @@ final class EnergyMonitor: ObservableObject {
         _ = samplingWorker.sampleProcesses()
         runtimeStore.save(runtimeStatistics)
         restartTimer()
+        refreshMacOSLowPowerMode()
 
         Task { [weak self] in
             let details = await Task.detached(priority: .utility) {
@@ -373,12 +378,7 @@ final class EnergyMonitor: ObservableObject {
     }
 
     var macOSLowPowerModeIsEnabled: Bool {
-        // ProcessInfo is not a reliable source for the macOS setting.  The
-        // authoritative value is the battery power profile exposed by pmset.
-        if let value = Self.readMacOSLowPowerMode() {
-            return value
-        }
-        return ProcessInfo.processInfo.isLowPowerModeEnabled
+        cachedMacOSLowPowerModeIsEnabled
     }
 
     var effectiveLowPowerModeIsEnabled: Bool {
@@ -1136,15 +1136,37 @@ final class EnergyMonitor: ObservableObject {
                 encoding: .utf8
             )
             DispatchQueue.main.async { [weak self] in
-                self?.objectWillChange.send()
+                self?.refreshMacOSLowPowerMode(force: true)
                 DispatchQueue.main.asyncAfter(deadline: .now() + 2.5) {
-                    self?.objectWillChange.send()
+                    self?.refreshMacOSLowPowerMode(force: true)
                 }
             }
         }
     }
 
-    private static func readMacOSLowPowerMode() -> Bool? {
+    private func refreshMacOSLowPowerMode(force: Bool = false) {
+        guard !lowPowerModeRefreshIsInFlight else { return }
+        guard force || Date().timeIntervalSince(lastLowPowerModeRefresh) >= 30
+        else { return }
+
+        lowPowerModeRefreshIsInFlight = true
+        lastLowPowerModeRefresh = .now
+        DispatchQueue.global(qos: .utility).async { [weak self] in
+            let value = Self.readMacOSLowPowerMode()
+            DispatchQueue.main.async { [weak self] in
+                guard let self else { return }
+                self.lowPowerModeRefreshIsInFlight = false
+                guard let value,
+                      value != self.cachedMacOSLowPowerModeIsEnabled else {
+                    return
+                }
+                self.objectWillChange.send()
+                self.cachedMacOSLowPowerModeIsEnabled = value
+            }
+        }
+    }
+
+    nonisolated private static func readMacOSLowPowerMode() -> Bool? {
         let task = Process()
         let pipe = Pipe()
         task.executableURL = URL(fileURLWithPath: "/usr/bin/pmset")
@@ -1370,6 +1392,7 @@ final class EnergyMonitor: ObservableObject {
     ) {
         collectionIsInFlight = false
         guard isRunning else { return }
+        refreshMacOSLowPowerMode()
 
         // Exactly one invalidation for the complete sensor transaction.
         objectWillChange.send()
