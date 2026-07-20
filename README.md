@@ -6,9 +6,62 @@ Eine native macOS-Menüleisten-App zur lokalen Analyse des geschätzten Batterie
 
 **BUS – Battery Usage Score von Heiko Große & ChatGPT © 2026**
 
-> **Changelog-Regel:** Die neuesten Versionsabschnitte stehen immer zuerst.
-> Neue Releases werden direkt unter „Aktuelle Änderungen“ ergänzt; Version,
-> Build und Überschrift müssen dabei immer dieselbe Release-Version nennen.
+## Funktionen
+
+- professionelles Dashboard mit BUS Score
+- grafischer Akku- und Leistungsverlauf
+- geschätzter Verbrauch pro App
+- Menüleistenanzeige
+- Autostart beim Anmelden
+- automatischer Reset nach dem Trennen vom Ladegerät
+- Deutsch, Englisch, Französisch, Spanisch, Italienisch, Niederländisch, Japanisch und vereinfachtes Chinesisch
+- Sprachauswahl beim ersten Start und später in den Einstellungen
+- CSV-Export
+- vollständig lokale Speicherung
+
+## Datenschutz
+
+BUS enthält absichtlich keinen Netzwerkcode. Das Buildskript führt vor jedem Build `privacy-audit.sh` aus und bricht ab, falls bekannte Netzwerk-APIs im Quellcode auftauchen.
+
+Die App verwendet keine:
+- Telemetrie
+- Analyse-Dienste
+- Cloud-Synchronisation
+- Update-Abfragen
+- externen Server
+
+## Build und Installation
+
+```bash
+bash "/Pfad/zu/BUS-v0.1-SwiftPackage/kompilieren-und-installieren.sh"
+```
+
+Erfordert Apple Command Line Tools und macOS 13 oder neuer. Getestete Zielumgebung: macOS 27 / Swift 6.4.
+
+## Veröffentlichbare DMG erzeugen
+
+Das Release-Skript baut App und Hardware Helper, erstellt ein macOS-
+Installationspaket und verpackt es zusammen mit einer Kurzanleitung als DMG:
+
+```bash
+bash release-dmg.sh
+```
+
+Das Ergebnis liegt als `dist/BUS-<Version>.dmg` samt SHA-256-Prüfsumme vor.
+Ohne Zertifikate wird ein lokal testbarer, ad-hoc-signierter Build erzeugt.
+Für eine öffentliche Veröffentlichung werden eine Developer-ID-Anwendungs- und
+Installer-Identität sowie ein gespeichertes Notarisierungsprofil angegeben:
+
+```bash
+APP_SIGN_IDENTITY="Developer ID Application: …" \
+INSTALLER_SIGN_IDENTITY="Developer ID Installer: …" \
+NOTARY_PROFILE="BUS-notary" \
+bash release-dmg.sh
+```
+
+## Hinweis zur Genauigkeit
+
+macOS stellt keine offizielle Akkuabrechnung pro App bereit. BUS verteilt die gemessene Entladung anhand von CPU-Zeit, Datenträger-I/O und Wakeups. Die Werte sind daher technische Schätzungen.
 
 ## App-Vorschau
 
@@ -78,64 +131,6 @@ Version 1.0.0, Build 69.
 - Unterbrochene Ladevorgänge sowie Standby-/Ruhezustandslücken werden verworfen.
 
 ## Ältere Versionen
-
-## Funktionen
-
-- professionelles Dashboard mit BUS Score
-- grafischer Akku- und Leistungsverlauf
-- geschätzter Verbrauch pro App
-- Menüleistenanzeige
-- Autostart beim Anmelden
-- automatischer Reset nach dem Trennen vom Ladegerät
-- Deutsch, Englisch, Französisch, Spanisch, Italienisch, Niederländisch, Japanisch und vereinfachtes Chinesisch
-- Sprachauswahl beim ersten Start und später in den Einstellungen
-- CSV-Export
-- vollständig lokale Speicherung
-
-## Datenschutz
-
-BUS enthält absichtlich keinen Netzwerkcode. Das Buildskript führt vor jedem Build `privacy-audit.sh` aus und bricht ab, falls bekannte Netzwerk-APIs im Quellcode auftauchen.
-
-Die App verwendet keine:
-- Telemetrie
-- Analyse-Dienste
-- Cloud-Synchronisation
-- Update-Abfragen
-- externen Server
-
-## Build und Installation
-
-```bash
-bash "/Pfad/zu/BUS-v0.1-SwiftPackage/kompilieren-und-installieren.sh"
-```
-
-Erfordert Apple Command Line Tools und macOS 13 oder neuer. Getestete Zielumgebung: macOS 27 / Swift 6.4.
-
-## Veröffentlichbare DMG erzeugen
-
-Das Release-Skript baut App und Hardware Helper, erstellt ein macOS-
-Installationspaket und verpackt es zusammen mit einer Kurzanleitung als DMG:
-
-```bash
-bash release-dmg.sh
-```
-
-Das Ergebnis liegt als `dist/BUS-<Version>.dmg` samt SHA-256-Prüfsumme vor.
-Ohne Zertifikate wird ein lokal testbarer, ad-hoc-signierter Build erzeugt.
-Für eine öffentliche Veröffentlichung werden eine Developer-ID-Anwendungs- und
-Installer-Identität sowie ein gespeichertes Notarisierungsprofil angegeben:
-
-```bash
-APP_SIGN_IDENTITY="Developer ID Application: …" \
-INSTALLER_SIGN_IDENTITY="Developer ID Installer: …" \
-NOTARY_PROFILE="BUS-notary" \
-bash release-dmg.sh
-```
-
-## Hinweis zur Genauigkeit
-
-macOS stellt keine offizielle Akkuabrechnung pro App bereit. BUS verteilt die gemessene Entladung anhand von CPU-Zeit, Datenträger-I/O und Wakeups. Die Werte sind daher technische Schätzungen.
-
 
 ## Korrektur in 0.1.1
 
