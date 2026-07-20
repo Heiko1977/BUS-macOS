@@ -53,6 +53,27 @@ bash "/Pfad/zu/BUS-v0.1-SwiftPackage/kompilieren-und-installieren.sh"
 
 Erfordert Apple Command Line Tools und macOS 13 oder neuer. Getestete Zielumgebung: macOS 27 / Swift 6.4.
 
+## Veröffentlichbare DMG erzeugen
+
+Das Release-Skript baut App und Hardware Helper, erstellt ein macOS-
+Installationspaket und verpackt es zusammen mit einer Kurzanleitung als DMG:
+
+```bash
+bash release-dmg.sh
+```
+
+Das Ergebnis liegt als `dist/BUS-<Version>.dmg` samt SHA-256-Prüfsumme vor.
+Ohne Zertifikate wird ein lokal testbarer, ad-hoc-signierter Build erzeugt.
+Für eine öffentliche Veröffentlichung werden eine Developer-ID-Anwendungs- und
+Installer-Identität sowie ein gespeichertes Notarisierungsprofil angegeben:
+
+```bash
+APP_SIGN_IDENTITY="Developer ID Application: …" \
+INSTALLER_SIGN_IDENTITY="Developer ID Installer: …" \
+NOTARY_PROFILE="BUS-notary" \
+bash release-dmg.sh
+```
+
 ## Hinweis zur Genauigkeit
 
 macOS stellt keine offizielle Akkuabrechnung pro App bereit. BUS verteilt die gemessene Entladung anhand von CPU-Zeit, Datenträger-I/O und Wakeups. Die Werte sind daher technische Schätzungen.
@@ -899,6 +920,13 @@ Version 1.1.0, Build 70.
   erlauben das gezielte Löschen der persönlichen Vorhersagedaten.
 - Im Menüleistenfenster lässt sich das Vergleichsprofil direkt umstellen;
   außerdem wird die bisherige Zeit im aktuell erkannten Profil angezeigt.
+
+## BUS 1.1.3 – Einheitliche Leistungsbilanz
+
+Version 1.1.3, Build 73.
+
+- Übersicht und Verlauf verwenden dieselbe Lückenbehandlung der Leistungsbilanz.
+- Zustandsgrenzen für Standby/Offline bleiben auch in der kompakten Übersicht beim Downsampling erhalten.
 
 ## BUS 1.1.2 – Leistungsbilanz ohne Lückensprünge
 

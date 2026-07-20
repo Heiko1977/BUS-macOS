@@ -350,8 +350,15 @@ private final class RasterChartNSView: NSView {
         var hasher = Hasher()
         hasher.combine(mode.rawValue)
         hasher.combine(points.count)
-        hasher.combine(points.first?.id)
-        hasher.combine(points.last?.id)
+        // Compact and full cards can preserve different gap-boundary points
+        // while keeping the same first/last values. Hash every displayed
+        // point so AppKit never retains an obsolete rasterized curve.
+        for point in points {
+            hasher.combine(point.id)
+            hasher.combine(point.date)
+            hasher.combine(point.signedPowerWatts?.bitPattern)
+            hasher.combine(point.estimatedPowerState)
+        }
         hasher.combine(domain.lowerBound.bitPattern)
         hasher.combine(domain.upperBound.bitPattern)
         return hasher.finalize()

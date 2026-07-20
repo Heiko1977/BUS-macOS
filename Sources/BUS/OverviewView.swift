@@ -318,7 +318,7 @@ struct BatteryChartCard: View {
     var compact = false
 
     private var points: [BatteryHistoryPoint] {
-        chartSamples(
+        return chartSamples(
             Array(charts.history.suffix(compact ? 720 : 2_000)),
             limit: compact ? 160 : 240
         )
@@ -406,6 +406,67 @@ private func chartSamples(
     if result.last?.id != points.last?.id, let last = points.last {
         result.append(last)
     }
+    // Gap boundaries describe a state change. They must never be dropped by
+    // downsampling, otherwise a compact chart reconnects the live readings
+    // with a diagonal even though the full History tab is correct.
+    for point in points where point.estimatedPowerState != nil {
+        if !result.contains(where: { $0.id == point.id }) {
+            result.append(point)
+        }
+    }
+    return result.sorted { $0.date < $1.date }
+}
+
+/// Adds visible state boundaries before downsampling the power history. This
+/// also repairs sessions recorded before persisted gap markers were added, so
+/// the Overview and History cards always receive the same curve.
+private func powerChartHistory(
+    _ history: [BatteryHistoryPoint]
+) -> [BatteryHistoryPoint] {
+    guard history.count > 1 else { return history }
+
+    var result: [BatteryHistoryPoint] = []
+    for index in history.indices {
+        let point = history[index]
+        result.append(point)
+        guard index < history.index(before: history.endIndex) else { continue }
+
+        let next = history[history.index(after: index)]
+        let gap = next.date.timeIntervalSince(point.date)
+        guard gap >= 5 * 60,
+              point.estimatedPowerState == nil,
+              next.estimatedPowerState == nil else { continue }
+
+        let transition = min(120, max(30, gap * 0.025))
+        let start = point.date.addingTimeInterval(transition)
+        let end = next.date.addingTimeInterval(-transition)
+        guard start < end else { continue }
+
+        // Pre-1.1.2 history cannot distinguish a former shutdown from sleep.
+        // Future gaps are persisted by EnergyMonitor with the measured local
+        // energy delta; this conservative fallback prevents a false ramp.
+        let fallbackWatts = next.externalConnected ? -0.12 : 0.12
+        result.append(
+            BatteryHistoryPoint(
+                date: start,
+                percent: point.percent,
+                signedPowerWatts: fallbackWatts,
+                externalConnected: next.externalConnected,
+                energyMilliwattHours: point.energyMilliwattHours,
+                estimatedPowerState: .standbyEstimate
+            )
+        )
+        result.append(
+            BatteryHistoryPoint(
+                date: end,
+                percent: next.percent,
+                signedPowerWatts: fallbackWatts,
+                externalConnected: next.externalConnected,
+                energyMilliwattHours: next.energyMilliwattHours,
+                estimatedPowerState: .standbyEstimate
+            )
+        )
+    }
     return result
 }
 
@@ -418,12 +479,14 @@ struct PowerChartCard: View {
     var compact = false
 
     private var points: [BatteryHistoryPoint] {
-        chartSamples(
+        let history = powerChartHistory(
+            charts.history.filter {
+                $0.signedPowerWatts != nil || $0.powerWatts != nil
+            }
+        )
+        return chartSamples(
             Array(
-            charts.history
-                .filter {
-                    $0.signedPowerWatts != nil || $0.powerWatts != nil
-                }
+            history
                 .suffix(compact ? 720 : 2_000)
             ),
             limit: compact ? 160 : 240
