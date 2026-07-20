@@ -10,6 +10,23 @@ Eine native macOS-Menüleisten-App zur lokalen Analyse des geschätzten Batterie
 > Neue Releases werden direkt unter „Aktuelle Änderungen“ ergänzt; Version,
 > Build und Überschrift müssen dabei immer dieselbe Release-Version nennen.
 
+## App-Vorschau
+
+Die aktuelle Version als native macOS-App:
+
+<table>
+  <tr>
+    <td><strong>Übersicht</strong><br><img src="docs/screenshots/overview-dashboard.png" width="300" alt="BUS Übersicht"></td>
+    <td><strong>Laden</strong><br><img src="docs/screenshots/overview-charging.png" width="300" alt="BUS Ladeansicht"></td>
+    <td><strong>Profile</strong><br><img src="docs/screenshots/profiles.png" width="300" alt="BUS Profile"></td>
+  </tr>
+  <tr>
+    <td><strong>Einstellungen</strong><br><img src="docs/screenshots/settings.png" width="300" alt="BUS Einstellungen"></td>
+    <td><strong>Menüleisten-Popover</strong><br><img src="docs/screenshots/menu-bar-popover.png" width="220" alt="BUS Menüleisten-Popover"></td>
+    <td><strong>Hardware-Karte</strong><br><img src="docs/screenshots/overview-hardware.png" width="300" alt="BUS Übersicht mit MacBook-Hardwarekarte"></td>
+  </tr>
+</table>
+
 ## Aktuelle Änderungen
 
 ## BUS 1.1.4 – Gaming-Erkennung und Lernprofil
@@ -61,23 +78,6 @@ Version 1.0.0, Build 69.
 - Unterbrochene Ladevorgänge sowie Standby-/Ruhezustandslücken werden verworfen.
 
 ## Ältere Versionen
-
-## App-Vorschau
-
-Die aktuelle Version als native macOS-App:
-
-<table>
-  <tr>
-    <td><strong>Übersicht</strong><br><img src="docs/screenshots/overview-dashboard.png" width="300" alt="BUS Übersicht"></td>
-    <td><strong>Laden</strong><br><img src="docs/screenshots/overview-charging.png" width="300" alt="BUS Ladeansicht"></td>
-    <td><strong>Profile</strong><br><img src="docs/screenshots/profiles.png" width="300" alt="BUS Profile"></td>
-  </tr>
-  <tr>
-    <td><strong>Einstellungen</strong><br><img src="docs/screenshots/settings.png" width="300" alt="BUS Einstellungen"></td>
-    <td><strong>Menüleisten-Popover</strong><br><img src="docs/screenshots/menu-bar-popover.png" width="220" alt="BUS Menüleisten-Popover"></td>
-    <td><strong>Hardware-Karte</strong><br><img src="docs/screenshots/overview-hardware.png" width="300" alt="BUS Übersicht mit MacBook-Hardwarekarte"></td>
-  </tr>
-</table>
 
 ## Funktionen
 
