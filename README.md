@@ -919,20 +919,6 @@ Version 1.1.4, Build 74.
 - Bis mindestens drei qualifizierte lokale Sitzungen vorliegen, verwendet BUS die
   integrierte Modell- und Profilreferenz als stabile Vergleichsbasis.
 
-## BUS 1.1.0 – Rollierende persönliche Vergleichsprognose
-
-Version 1.1.0, Build 70.
-
-- Im Profil **Automatisch** bildet BUS die persönliche Referenz aus
-  qualifizierten Batteriesitzungen der letzten 1 bis 30 Tage; der Standard
-  beträgt 3 Tage.
-- Laufzeit- und Ladeprognosen bleiben minutengenau und erläutern sichtbar,
-  dass sie auf vergleichbaren lokalen Sitzungen beruhen.
-- Die Einstellungen zeigen Sitzungszahl, Ladedaten und den Lernstatus an und
-  erlauben das gezielte Löschen der persönlichen Vorhersagedaten.
-- Im Menüleistenfenster lässt sich das Vergleichsprofil direkt umstellen;
-  außerdem wird die bisherige Zeit im aktuell erkannten Profil angezeigt.
-
 ## BUS 1.1.3 – Einheitliche Leistungsbilanz
 
 Version 1.1.3, Build 73.
@@ -959,3 +945,17 @@ Version 1.1.1, Build 71.
   verbindet damit eine stabile Datenbasis mit der aktuellen Nutzungsweise.
 - Bei niedrigem Akkustand bleibt die Prozentzahl im farbigen
   Menüleistensymbol weiß und lesbar.
+
+## BUS 1.1.0 – Rollierende persönliche Vergleichsprognose
+
+Version 1.1.0, Build 70.
+
+- Im Profil **Automatisch** bildet BUS die persönliche Referenz aus
+  qualifizierten Batteriesitzungen der letzten 1 bis 30 Tage; der Standard
+  beträgt 3 Tage.
+- Laufzeit- und Ladeprognosen bleiben minutengenau und erläutern sichtbar,
+  dass sie auf vergleichbaren lokalen Sitzungen beruhen.
+- Die Einstellungen zeigen Sitzungszahl, Ladedaten und den Lernstatus an und
+  erlauben das gezielte Löschen der persönlichen Vorhersagedaten.
+- Im Menüleistenfenster lässt sich das Vergleichsprofil direkt umstellen;
+  außerdem wird die bisherige Zeit im aktuell erkannten Profil angezeigt.
