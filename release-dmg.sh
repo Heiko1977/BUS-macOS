@@ -31,7 +31,7 @@ cleanup() {
 trap cleanup EXIT
 trap 'code=$?; echo "❌ Release-Build abgebrochen (Fehlercode $code)."; exit "$code"' ERR
 
-for tool in swift xcrun clang codesign plutil ditto sips iconutil pkgbuild hdiutil; do
+for tool in swift xcrun clang codesign plutil ditto sips iconutil pkgbuild diskutil; do
   command -v "$tool" >/dev/null || { echo "❌ Werkzeug fehlt: $tool"; exit 1; }
 done
 
@@ -140,8 +140,8 @@ Hardware Helper wird als LaunchDaemon eingerichtet.
 Systemvoraussetzung: macOS 27.0 oder neuer.
 EOF
 rm -f "$DMG"
-hdiutil create -volname "BUS ${VERSION}" -srcfolder "$DMG_ROOT" \
-  -format UDZO -imagekey zlib-level=9 "$DMG"
+diskutil image create from "$DMG_ROOT" \
+  -volname "BUS ${VERSION}" -format UDZO "$DMG"
 
 if [[ -n "$NOTARY_PROFILE" ]]; then
   echo "▶ DMG notarifizieren"

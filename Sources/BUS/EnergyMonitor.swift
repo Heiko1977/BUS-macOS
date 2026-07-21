@@ -732,18 +732,25 @@ final class EnergyMonitor: ObservableObject {
     }
 
     var learnedAppActivityHours: Double {
-        runtimeStatistics.appActivityUsage.values
-            .flatMap(\.samples)
-            .filter { $0.date >= learningStartedAt }
-            .reduce(0) { $0 + $1.duration } / 3600
+        learningObservationHours(measuredOnly: false)
     }
 
     var measuredEnergyHours: Double {
-        runtimeStatistics.appActivityUsage.values
+        learningObservationHours(measuredOnly: true)
+    }
+
+    /// Returns wall-clock observation time, not the sum of parallel app
+    /// intervals. Several apps are sampled simultaneously and must therefore
+    /// contribute only once to the learning period.
+    private func learningObservationHours(measuredOnly: Bool) -> Double {
+        let samples = runtimeStatistics.appActivityUsage.values
             .flatMap(\.samples)
             .filter { $0.date >= learningStartedAt }
-            .filter { $0.attributedMilliwattHours > 0 }
-            .reduce(0) { $0 + $1.duration } / 3600
+            .filter { !measuredOnly || $0.attributedMilliwattHours > 0 }
+        guard let first = samples.map(\.date).min(),
+              let last = samples.map(\.date).max() else { return 0 }
+        let end = last.addingTimeInterval(sampleInterval)
+        return max(0, end.timeIntervalSince(max(first, learningStartedAt))) / 3600
     }
 
     var personalAppUsageSummaries: [PersonalAppUsageSummary] {
@@ -1267,6 +1274,9 @@ final class EnergyMonitor: ObservableObject {
 
     func deleteAllLocalData() {
         objectWillChange.send()
+        // Finish queued writes first; otherwise an older snapshot can land
+        // after the reset and resurrect the deleted activity samples.
+        persistenceQueue.sync {}
         learningStartedAt = .now
         UserDefaults.standard.set(learningStartedAt, forKey: "BUS.learningStartedAt")
         store.deleteAll()
@@ -1290,6 +1300,7 @@ final class EnergyMonitor: ObservableObject {
     /// predictions, while retaining the current dashboard and app records.
     func deletePersonalPredictionData() {
         objectWillChange.send()
+        persistenceQueue.sync {}
         learningStartedAt = .now
         UserDefaults.standard.set(learningStartedAt, forKey: "BUS.learningStartedAt")
         runtimeStatistics = .empty
