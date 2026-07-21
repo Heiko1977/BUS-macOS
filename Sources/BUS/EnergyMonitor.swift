@@ -141,7 +141,7 @@ final class EnergyMonitor: ObservableObject {
 
     private init() {
         let defaults = UserDefaults.standard
-        let interval = defaults.object(forKey: "BUS.sampleInterval") as? Double ?? 5
+        let interval = defaults.object(forKey: "BUS.sampleInterval") as? Double ?? 10
         let autoReset = defaults.object(
             forKey: "BUS.resetAfterChargingEnds"
         ) as? Bool ?? false
@@ -724,6 +724,30 @@ final class EnergyMonitor: ObservableObject {
         runtimeStatistics.appActivityUsage.values.reduce(0) {
             $0 + $1.samples.count
         }
+    }
+
+    var personalAppUsageSummaries: [PersonalAppUsageSummary] {
+        let cutoff = Date.now.addingTimeInterval(-30 * 24 * 3600)
+        return runtimeStatistics.appActivityUsage.compactMap { key, usage in
+            let samples = usage.samples.filter { $0.date >= cutoff }
+            guard !samples.isEmpty else { return nil }
+            return PersonalAppUsageSummary(
+                id: key,
+                name: usage.name,
+                bundleIdentifier: usage.bundleIdentifier,
+                applicationPath: usage.applicationPath,
+                usedSeconds: samples.reduce(0) { $0 + $1.duration },
+                foregroundSeconds: samples.filter { $0.state == .foreground }
+                    .reduce(0) { $0 + $1.duration },
+                backgroundSeconds: samples.filter { $0.state != .foreground }
+                    .reduce(0) { $0 + $1.duration },
+                attributedMilliwattHours: samples.reduce(0) {
+                    $0 + $1.attributedMilliwattHours
+                },
+                sampleCount: samples.count
+            )
+        }
+        .sorted { $0.attributedMilliwattHours > $1.attributedMilliwattHours }
     }
 
     var personalPredictionConfidenceKey: String {
@@ -1417,11 +1441,17 @@ final class EnergyMonitor: ObservableObject {
             to: newBattery
         )
         let totalScore = deltas.reduce(0) { $0 + $1.score }
+        let measuredIntervalEnergy = (newBattery?.measuredSystemPowerWatts
+            ?? newBattery?.instantaneousPowerWatts ?? 0)
+            * sampleInterval / 3600 * 1000
+        let energyForAttribution = discharge > 0
+            ? discharge
+            : max(0, measuredIntervalEnergy)
 
         for delta in deltas {
             let appKey = delta.app.bundleIdentifier ?? delta.app.name
             let attributedEnergy = totalScore > 0
-                ? discharge * delta.score / totalScore
+                ? energyForAttribution * delta.score / totalScore
                 : 0
 
             var appRecord = session.records[appKey] ?? AppEnergyRecord(

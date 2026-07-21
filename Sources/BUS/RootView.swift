@@ -1,7 +1,7 @@
 import SwiftUI
 
 enum MainSection: String, CaseIterable, Identifiable {
-    case overview, history, consumers, profiles, settings, about
+    case overview, history, consumers, personalProfile, profiles, settings, about
     var id: String { rawValue }
     var icon: String {
         switch self {
@@ -9,6 +9,7 @@ enum MainSection: String, CaseIterable, Identifiable {
         case .history: return "chart.xyaxis.line"
         case .consumers: return "bolt.fill"
         case .profiles: return "person.crop.circle.badge.checkmark"
+        case .personalProfile: return "person.crop.circle"
         case .settings: return "gearshape.fill"
         case .about: return "info.circle.fill"
         }
@@ -48,6 +49,7 @@ struct RootView: View {
                 case .history: HistoryView()
                 case .consumers: ConsumersView()
                 case .profiles: ProfilesView()
+                case .personalProfile: PersonalProfileView()
                 case .settings: BUSSettingsView()
                 case .about: AboutView()
                 }

@@ -53,7 +53,13 @@ struct ProcessDelta {
 }
 
 final class ProcessSampler {
+    private struct CachedIdentity {
+        let process: ProcessIdentity
+        let app: AppIdentity
+    }
+
     private var previous: [Int32: ProcessCounters] = [:]
+    private var identities: [Int32: CachedIdentity] = [:]
 
     func sample() -> [ProcessDelta] {
         let frontmost = NSWorkspace.shared.frontmostApplication
@@ -87,14 +93,10 @@ final class ProcessSampler {
             current[pid] = counters
             guard let old = previous[pid] else { continue }
 
-            let running = NSRunningApplication(processIdentifier: pid_t(pid))
-            let processName = running?.localizedName ?? processName(pid: pid) ?? "Prozess \(pid)"
-            let process = ProcessIdentity(
-                pid: pid,
-                name: processName,
-                bundleIdentifier: running?.bundleIdentifier
-            )
-            let app = appIdentity(for: running, fallbackName: processName)
+            let identity = identities[pid] ?? resolveIdentity(for: pid)
+            identities[pid] = identity
+            let process = identity.process
+            let app = identity.app
             let appKey = app.bundleIdentifier ?? app.name
             let score = ProcessDelta.score(
                 cpuSeconds: secondsDelta(counters.cpuNanoseconds, old.cpuNanoseconds),
@@ -120,7 +122,23 @@ final class ProcessSampler {
         }
 
         previous = current
+        identities = identities.filter { current[$0.key] != nil }
         return deltas
+    }
+
+    private func resolveIdentity(for pid: Int32) -> CachedIdentity {
+        let running = NSRunningApplication(processIdentifier: pid_t(pid))
+        let processName = running?.localizedName
+            ?? processName(pid: pid)
+            ?? "Prozess \(pid)"
+        return CachedIdentity(
+            process: ProcessIdentity(
+                pid: pid,
+                name: processName,
+                bundleIdentifier: running?.bundleIdentifier
+            ),
+            app: appIdentity(for: running, fallbackName: processName)
+        )
     }
 
     private func activityState(

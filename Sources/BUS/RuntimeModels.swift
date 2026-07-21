@@ -223,6 +223,25 @@ struct LearnedAppActivityUsage: Codable, Hashable {
     }
 }
 
+struct PersonalAppUsageSummary: Identifiable, Hashable {
+    let id: String
+    let name: String
+    let bundleIdentifier: String?
+    let applicationPath: String?
+    let usedSeconds: TimeInterval
+    let foregroundSeconds: TimeInterval
+    let backgroundSeconds: TimeInterval
+    let attributedMilliwattHours: Double
+    let sampleCount: Int
+
+    var usedHours: Double { usedSeconds / 3600 }
+
+    var averagePowerWatts: Double? {
+        guard usedHours > 0, attributedMilliwattHours > 0 else { return nil }
+        return attributedMilliwattHours / 1000 / usedHours
+    }
+}
+
 /// A local interval used only to establish the personal automatic profile mix.
 /// It intentionally records no app or process data.
 struct ProfileUsageRecord: Identifiable, Codable, Hashable {

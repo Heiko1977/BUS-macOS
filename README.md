@@ -1,6 +1,6 @@
-# BUS – Battery Usage Score 1.1.6
+# BUS – Battery Usage Score 1.1.7
 
-Aktuelle Version: **1.1.6 (Build 76)**.
+Aktuelle Version: **1.1.7 (Build 77)**.
 
 Eine native macOS-Menüleisten-App zur lokalen Analyse des geschätzten Batterieverbrauchs pro App.
 

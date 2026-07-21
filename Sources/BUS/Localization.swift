@@ -57,8 +57,8 @@ final class Localizer: ObservableObject {
 
     private static let strings: [AppLanguage: [String: String]] = [
         .de: [
-            "overview":"Übersicht","overviewSubtitle":"Alle wichtigen Informationen auf einen Blick.","history":"Verlauf","consumers":"Verbraucher","groupedProcessesInfo":"Zugehörige Hilfs-, Renderer- und Hintergrundprozesse werden pro App zusammengefasst.","process":"Prozess","processes":"Prozesse","settings":"Einstellungen","about":"Über BUS",
-            "battery":"Akku","power":"Leistung","duration":"Messdauer","status":"Status","batteryMode":"Akkubetrieb","mainsMode":"Netzbetrieb",
+            "overview":"Übersicht","overviewSubtitle":"Alle wichtigen Informationen auf einen Blick.","history":"Verlauf","consumers":"Verbraucher","personalProfile":"Dein Profil","personalProfileSubtitle":"Deine persönliche Systemnutzung der letzten 30 Tage.","personalProfileApps":"App-Nutzung","personalProfileAppsInfo":"Energieverbrauch und Nutzungsdauer nach App, inklusive Hintergrundprozessen.","personalProfileNoData":"Noch keine 30-Tage-Daten vorhanden.","unknownApp":"Unbekannte App","groupedProcessesInfo":"Zugehörige Hilfs-, Renderer- und Hintergrundprozesse werden pro App zusammengefasst.","process":"Prozess","processes":"Prozesse","settings":"Einstellungen","about":"Über BUS",
+            "battery":"Akku","power":"Leistung","energy":"Energie","foreground":"Vordergrund","background":"Hintergrund","duration":"Dauer","status":"Status","batteryMode":"Akkubetrieb","mainsMode":"Netzbetrieb",
             "score":"BUS Score","excellent":"Ausgezeichnet","veryGood":"Sehr gut","good":"Gut","elevated":"Erhöhter Verbrauch","high":"Hoher Verbrauch",
             "batteryHistory":"Akkuverlauf","lastHours":"Aktuelle Messsitzung","topConsumers":"Top-Verbraucher","noData":"Noch keine auswertbaren Messdaten",
             "openOverview":"Übersicht öffnen","pause":"Pause","start":"Start","quit":"BUS beenden","reset":"Zurücksetzen","export":"Export",
@@ -215,8 +215,8 @@ final class Localizer: ObservableObject {
 
         ],
         .en: [
-            "overview":"Overview","overviewSubtitle":"All important information at a glance.","history":"History","consumers":"Consumers","groupedProcessesInfo":"Related helper, renderer and background processes are grouped by app.","process":"process","processes":"processes","settings":"Settings","about":"About BUS",
-            "battery":"Battery","power":"Power","duration":"Measurement","status":"Status","batteryMode":"On battery","mainsMode":"Power adapter",
+            "overview":"Overview","overviewSubtitle":"All important information at a glance.","history":"History","consumers":"Consumers","personalProfile":"Your Profile","personalProfileSubtitle":"Your personal system usage over the last 30 days.","personalProfileApps":"App usage","personalProfileAppsInfo":"Energy use and time spent by app, including background processes.","personalProfileNoData":"No 30-day data available yet.","unknownApp":"Unknown app","groupedProcessesInfo":"Related helper, renderer and background processes are grouped by app.","process":"process","processes":"processes","settings":"Settings","about":"About BUS",
+            "battery":"Battery","power":"Power","energy":"Energy","foreground":"Foreground","background":"Background","duration":"Duration","status":"Status","batteryMode":"On battery","mainsMode":"Power adapter",
             "score":"BUS Score","excellent":"Excellent","veryGood":"Very good","good":"Good","elevated":"Elevated usage","high":"High usage",
             "batteryHistory":"Battery history","lastHours":"Current measurement session","topConsumers":"Top consumers","noData":"No evaluable data yet",
             "openOverview":"Open overview","pause":"Pause","start":"Start","quit":"Quit BUS","reset":"Reset","export":"Export",
