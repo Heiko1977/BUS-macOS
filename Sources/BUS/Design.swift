@@ -195,7 +195,7 @@ struct ScoreRing: View {
                 .trim(from: 0, to: Double(score) / 100)
                 .stroke(
                     AngularGradient(
-                        colors: [.green, .mint, .green],
+                        colors: [scoreColor(score), scoreColor(score).opacity(0.65), scoreColor(score)],
                         center: .center
                     ),
                     style: StrokeStyle(lineWidth: 15, lineCap: .round)
@@ -213,7 +213,7 @@ struct ScoreRing: View {
 
                 Text(label)
                     .font(.subheadline.bold())
-                    .foregroundStyle(.green)
+                    .foregroundStyle(scoreColor(score))
                     .lineLimit(1)
                     .minimumScaleFactor(0.75)
             }
@@ -221,4 +221,11 @@ struct ScoreRing: View {
         .frame(width: diameter, height: diameter)
         .allowsHitTesting(false)
     }
+}
+
+func scoreColor(_ score: Int) -> Color {
+    let normalized = min(100, max(0, Double(score))) / 100
+    // Red → amber → green, with a continuous hue transition.
+    let hue = normalized * (1.0 / 3.0)
+    return Color(hue: hue, saturation: 0.78, brightness: 0.92)
 }

@@ -91,7 +91,7 @@ struct ScoreBreakdownCard: View {
                 }
             }
             ProgressView(value: score, total: 100)
-                .tint(.green)
+                .tint(scoreColor(Int(score.rounded())))
         }
     }
 

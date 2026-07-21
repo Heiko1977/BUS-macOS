@@ -4,6 +4,12 @@ import Foundation
 @MainActor
 final class BUSAppDelegate: NSObject, NSApplicationDelegate {
     func applicationDidFinishLaunching(_ notification: Notification) {
+        NotificationCenter.default.addObserver(
+            self,
+            selector: #selector(mainWindowWillClose(_:)),
+            name: NSWindow.willCloseNotification,
+            object: nil
+        )
         let shouldStartHidden = LoginItemManager.shared.isEnabled
             && LaunchBehaviorManager.shared.startHiddenAtLogin
         DebugLogger.log(
@@ -29,6 +35,21 @@ final class BUSAppDelegate: NSObject, NSApplicationDelegate {
         }
     }
 
+    @objc private func mainWindowWillClose(_ notification: Notification) {
+        guard let window = notification.object as? NSWindow,
+              window.title.contains("BUS") else { return }
+        // Let SwiftUI finish removing the window before checking the list.
+        DispatchQueue.main.async {
+            let hasVisibleMainWindow = NSApp.windows.contains {
+                $0.isVisible && $0.canBecomeKey && $0.title.contains("BUS")
+            }
+            if !hasVisibleMainWindow {
+                DebugLogger.log("main window closed -> accessory activation policy")
+                NSApp.setActivationPolicy(.accessory)
+            }
+        }
+    }
+
     func applicationShouldHandleReopen(
         _ sender: NSApplication,
         hasVisibleWindows flag: Bool
@@ -38,6 +59,19 @@ final class BUSAppDelegate: NSObject, NSApplicationDelegate {
             bringMainWindowForward()
         }
         return true
+    }
+
+    func applicationDidBecomeActive(_ notification: Notification) {
+        // A login-started instance begins as an accessory app. Once its main
+        // window is visible it must use the regular policy so macOS includes
+        // BUS in the Command-Tab switcher.
+        let hasVisibleMainWindow = NSApp.windows.contains {
+            $0.isVisible && $0.canBecomeKey && $0.title.contains("BUS")
+        }
+        if hasVisibleMainWindow, NSApp.activationPolicy() != .regular {
+            DebugLogger.log("visible main window -> regular activation policy")
+            NSApp.setActivationPolicy(.regular)
+        }
     }
 
     func applicationDockMenu(_ sender: NSApplication) -> NSMenu? {

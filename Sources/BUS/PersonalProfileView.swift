@@ -22,6 +22,8 @@ struct PersonalProfileView: View {
                         .foregroundStyle(.secondary)
                 }
 
+                learningCard
+
                 GlassCard {
                     VStack(alignment: .leading, spacing: 10) {
                         Label(l.t("personalProfileApps"), systemImage: "app.grid.2x2")
@@ -45,10 +47,103 @@ struct PersonalProfileView: View {
                         }
                     }
                 }
+
             }
             .padding()
         }
         .navigationTitle(l.t("personalProfile"))
+    }
+
+    private var learningCard: some View {
+        let chargeSamples = monitor.chargeLearningSampleCount
+        let referenceCount = monitor.predictionSessionCount
+        let hasMeasuredEnergy = monitor.measuredEnergyHours > 0
+        // These curves deliberately approach, but do not quickly reach, 100 %.
+        // A short observation period must not be presented as a finished model.
+        let appProgress = learningProgress(monitor.learnedAppActivityHours, target: 168)
+        let chargeProgress = learningProgress(chargeSamples, target: 500)
+        // Include the currently running observation as a fractional reference.
+        // This avoids visible 20-point jumps while a session is being collected.
+        let fractionalReference = min(0.99, monitor.activeUsageProfileElapsed / 3600)
+        let usageProgress = learningProgress(
+            Double(referenceCount) + fractionalReference,
+            target: 5
+        )
+        let consumptionProgress = hasMeasuredEnergy
+            ? learningProgress(monitor.measuredEnergyHours, target: 72)
+            : 0
+
+        return GlassCard {
+            VStack(alignment: .leading, spacing: 12) {
+                Label(l.t("learningProgress"), systemImage: "brain.head.profile")
+                    .font(.headline)
+                Text(l.t("learningProgressInfo"))
+                    .font(.caption)
+                    .foregroundStyle(.secondary)
+                learningRow(
+                    l.t("learningCharging"), chargeProgress,
+                    "30 d · \(monitor.chargeLearningSampleCount) " + l.t("samples")
+                )
+                learningRow(
+                    l.t("learningAppUsage"), appProgress,
+                    "30 d · \(number(monitor.learnedAppActivityHours)) h · "
+                    + learningState(for: appProgress)
+                )
+                learningRow(
+                    l.t("learningConsumption"),
+                    consumptionProgress,
+                    hasMeasuredEnergy
+                        ? "30 d · " + number(monitor.measuredEnergyHours) + " h · "
+                            + learningState(for: consumptionProgress)
+                        : "30 d · " + l.t("notAvailable")
+                )
+                learningRow(
+                    l.t("learningRuntime"),
+                    usageProgress,
+                    "\(monitor.automaticProfileLookbackDays) d · \(referenceCount)/5 "
+                    + l.t("qualifiedSessions") + " · "
+                    + (referenceCount > 0
+                        ? learningState(for: usageProgress)
+                        : l.t("noQualifiedSessions"))
+                )
+            }
+        }
+    }
+
+    private func learningProgress(_ count: Int, target: Double) -> Double {
+        learningProgress(Double(count), target: target)
+    }
+
+    private func learningProgress(_ value: Double, target: Double) -> Double {
+        guard value > 0, target > 0 else { return 0 }
+        // Linear progress keeps the percentage honest: 1.8 observed hours
+        // out of a 168-hour target must not look like a fifth of the model.
+        return min(0.92, value / target)
+    }
+
+    private func learningState(for progress: Double) -> String {
+        switch progress {
+        case ..<0.4: return l.t("learningStateCollecting")
+        case ..<0.75: return l.t("learningStatePreliminary")
+        default: return l.t("learningStateStable")
+        }
+    }
+
+    private func learningRow(_ title: String, _ value: Double, _ detail: String) -> some View {
+        VStack(alignment: .leading, spacing: 5) {
+            HStack {
+                Text(title)
+                Spacer()
+                // Keep one decimal place so small improvements remain visible;
+                // this is especially important for the five-session runtime sample.
+                Text(number(value * 100) + " % · " + detail)
+                    .font(.caption)
+                    .foregroundStyle(.secondary)
+                    .monospacedDigit()
+            }
+            ProgressView(value: value)
+                .tint(Color(hue: value / 3, saturation: 0.72, brightness: 0.9))
+        }
     }
 
     private var sortedSummaries: [PersonalAppUsageSummary] {

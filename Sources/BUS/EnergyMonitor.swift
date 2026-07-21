@@ -128,6 +128,7 @@ final class EnergyMonitor: ObservableObject {
     private var previousBattery: BatterySnapshot?
     private var chargeLearningSamples: [ChargeLearningSample]
     private var chargeLearningAnchor: BatterySnapshot?
+    private var learningStartedAt: Date
     private var activeProfileStartedAt: Date
     private var saveCounter = 0
     private var cachedMacOSLowPowerModeIsEnabled =
@@ -177,6 +178,8 @@ final class EnergyMonitor: ObservableObject {
         let learnedChargeSamples = ChargeLearningStore().load().filter {
             $0.date >= maximumDataCutoff
         }
+        learningStartedAt = defaults.object(forKey: "BUS.learningStartedAt") as? Date
+            ?? maximumDataCutoff
 
         if let initialBattery, !initialBattery.externalConnected {
             if var active = loadedRuntime.active {
@@ -718,7 +721,9 @@ final class EnergyMonitor: ObservableObject {
 
     /// Charge-learning data is intentionally limited to 30 days, independent
     /// of the shorter automatic-profile comparison window.
-    var chargeLearningSampleCount: Int { chargeLearningSamples.count }
+    var chargeLearningSampleCount: Int {
+        chargeLearningSamples.filter { $0.date >= learningStartedAt }.count
+    }
 
     var learnedAppActivitySampleCount: Int {
         runtimeStatistics.appActivityUsage.values.reduce(0) {
@@ -726,10 +731,27 @@ final class EnergyMonitor: ObservableObject {
         }
     }
 
+    var learnedAppActivityHours: Double {
+        runtimeStatistics.appActivityUsage.values
+            .flatMap(\.samples)
+            .filter { $0.date >= learningStartedAt }
+            .reduce(0) { $0 + $1.duration } / 3600
+    }
+
+    var measuredEnergyHours: Double {
+        runtimeStatistics.appActivityUsage.values
+            .flatMap(\.samples)
+            .filter { $0.date >= learningStartedAt }
+            .filter { $0.attributedMilliwattHours > 0 }
+            .reduce(0) { $0 + $1.duration } / 3600
+    }
+
     var personalAppUsageSummaries: [PersonalAppUsageSummary] {
         let cutoff = Date.now.addingTimeInterval(-30 * 24 * 3600)
         return runtimeStatistics.appActivityUsage.compactMap { key, usage in
-            let samples = usage.samples.filter { $0.date >= cutoff }
+            let samples = usage.samples.filter {
+                $0.date >= cutoff && $0.date >= learningStartedAt
+            }
             guard !samples.isEmpty else { return nil }
             return PersonalAppUsageSummary(
                 id: key,
@@ -1245,6 +1267,8 @@ final class EnergyMonitor: ObservableObject {
 
     func deleteAllLocalData() {
         objectWillChange.send()
+        learningStartedAt = .now
+        UserDefaults.standard.set(learningStartedAt, forKey: "BUS.learningStartedAt")
         store.deleteAll()
         runtimeStore.delete()
         chargeLearningStore.delete()
@@ -1266,6 +1290,8 @@ final class EnergyMonitor: ObservableObject {
     /// predictions, while retaining the current dashboard and app records.
     func deletePersonalPredictionData() {
         objectWillChange.send()
+        learningStartedAt = .now
+        UserDefaults.standard.set(learningStartedAt, forKey: "BUS.learningStartedAt")
         runtimeStatistics = .empty
         if let snapshot = batteryReader.read(), !snapshot.externalConnected {
             runtimeStatistics.active = Self.newActiveSession(snapshot)

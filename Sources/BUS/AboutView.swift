@@ -19,6 +19,10 @@ struct AboutView: View {
                 .foregroundStyle(.secondary)
                 .multilineTextAlignment(.center)
                 .frame(maxWidth: 520)
+            Link(destination: URL(string: "https://github.com/Heiko1977/BUS-macOS")!) {
+                Label("GitHub", systemImage: "link")
+                    .font(.headline)
+            }
             Spacer()
         }
         .padding(40)

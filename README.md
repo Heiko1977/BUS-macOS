@@ -1,17 +1,29 @@
-# BUS – Battery Usage Score 1.1.7
+# BUS – Battery Usage Score 1.1.8
 
-Aktuelle Version: **1.1.7 (Build 77)**.
+Aktuelle Version: **1.1.8 (Build 78)**.
 
 Eine native macOS-Menüleisten-App zur lokalen Analyse des geschätzten Batterieverbrauchs pro App.
+
+Projektseite: [GitHub – BUS-macOS](https://github.com/Heiko1977/BUS-macOS)
 
 **BUS – Battery Usage Score von Heiko Große & ChatGPT © 2026**
 
 ## Funktionen
 
 - professionelles Dashboard mit BUS Score
+- farblich abgestufter BUS-Score von Rot über Gelb bis Grün
 - grafischer Akku- und Leistungsverlauf
-- geschätzter Verbrauch pro App
+- geschätzter Verbrauch pro App und Prozess
+- automatische Gruppierung von Haupt-, Renderer-, GPU-, Netzwerk- und Hilfsprozessen nach App
+- korrekte App-Symbole über die installierten macOS-Bundles, inklusive Fallback für unbekannte Prozesse
+- Vordergrund- und Hintergrundlaufzeit je App
+- sortierbare Spalten im Bereich „Dein Profil“; standardmäßig nach Energieverbrauch absteigend
+- persönliche 30-Tage-Auswertung mit Energie, Laufzeit, Leistung und App-Aktivität
+- grafischer Lernfortschritt für Lade-, App-, Verbrauchs- und Laufzeitdaten
+- getrennte Lernzyklen mit zurücksetzbarem Lernstart und nachvollziehbaren Prozentwerten
+- lokale Referenzsitzungen für automatische Laufzeitvergleiche
 - Menüleistenanzeige
+- Hauptfenster erscheint in `⌘Tab`, solange es geöffnet ist; beim Schließen wechselt BUS zurück in den Hintergrundmodus
 - Autostart beim Anmelden
 - automatischer Reset nach dem Trennen vom Ladegerät
 - Deutsch, Englisch, Französisch, Spanisch, Italienisch, Niederländisch, Japanisch und vereinfachtes Chinesisch
@@ -81,6 +93,17 @@ Die aktuelle Version als native macOS-App:
 </table>
 
 ## Aktuelle Änderungen
+
+## BUS 1.1.8 – Persönliches Profil und zuverlässiger Lernfortschritt
+
+Version 1.1.8, Build 78.
+
+- Der neue Bereich **Dein Profil** zeigt die App-Nutzung der letzten 30 Tage.
+- Energieverbrauch, Gesamtdauer, Vordergrund, Hintergrund und durchschnittliche Leistung sind je App sichtbar und sortierbar.
+- Lernfortschritte werden linear und mit Dezimalstellen dargestellt; laufende Laufzeit-Referenzen werden anteilig berücksichtigt.
+- Beim Zurücksetzen werden App-Aktivität, Verbrauchsproben, Ladeproben und Referenzdaten mit einem neuen Lernstart getrennt.
+- Die App erscheint nur mit geöffnetem Hauptfenster in der macOS-App-Umschaltung (`⌘Tab`).
+- „Über BUS“ enthält einen direkten Link zur GitHub-Projektseite.
 
 ## BUS 1.1.6 – macOS-Leistung-reduzieren-Steuerung
 
